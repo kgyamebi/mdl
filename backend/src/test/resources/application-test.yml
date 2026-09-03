@@ -1,0 +1,13 @@
+app:
+  jwt:
+    secret: test-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
+  owner:
+    seed-enabled: true
+    email: owner@mdl.local
+    username: owner
+    password: Owner@123!
+
+logging:
+  level:
+    root: WARN
+    com.mdl.platform: INFO

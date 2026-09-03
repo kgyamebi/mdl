@@ -1,0 +1,164 @@
+package com.mdl.platform.users;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mdl.platform.auth.dto.LoginRequest;
+import com.mdl.platform.support.DockerTestSupport;
+import com.mdl.platform.users.dto.CreateUserRequest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.List;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@Testcontainers
+@ActiveProfiles("test")
+@EnabledIf("com.mdl.platform.support.DockerTestSupport#isDockerAvailable")
+class UserManagementIntegrationTest {
+
+    @Container
+    static MariaDBContainer<?> mariaDB = new MariaDBContainer<>("mariadb:11.4")
+            .withDatabaseName("mdl_users_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mariaDB::getJdbcUrl);
+        registry.add("spring.datasource.username", mariaDB::getUsername);
+        registry.add("spring.datasource.password", mariaDB::getPassword);
+    }
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private String ownerToken;
+
+    @BeforeEach
+    void loginAsOwner() throws Exception {
+        ownerToken = loginAndGetAccessToken("owner@mdl.local", "Owner@123!");
+    }
+
+    @Test
+    void ownerCanListUsers() throws Exception {
+        mockMvc.perform(get("/api/users")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items").isArray())
+                .andExpect(jsonPath("$.data.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(3)));
+    }
+
+    @Test
+    void ownerCanCreateShopWorker() throws Exception {
+        CreateUserRequest request = new CreateUserRequest(
+                "sarah@mdl.local",
+                "sarah",
+                "Worker@123!",
+                "Sarah",
+                "Boateng",
+                "0244000000",
+                List.of("SHOP_WORKER"),
+                null);
+
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value("sarah@mdl.local"))
+                .andExpect(jsonPath("$.data.roles[0]").value("SHOP_WORKER"));
+    }
+
+    @Test
+    void shopWorkerCannotCreateUsers() throws Exception {
+        String workerToken = loginAndGetAccessToken("john@mdl.local", "Worker@123!");
+
+        CreateUserRequest request = new CreateUserRequest(
+                "blocked@mdl.local",
+                "blocked",
+                "Worker@123!",
+                "Blocked",
+                "User",
+                null,
+                List.of("VIEWER"),
+                null);
+
+        mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ownerCanAssignRoles() throws Exception {
+        MvcResult createResult = mockMvc.perform(post("/api/users")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateUserRequest(
+                                "temp.worker@mdl.local",
+                                "tempworker",
+                                "Worker@123!",
+                                "Temp",
+                                "Worker",
+                                null,
+                                List.of("VIEWER"),
+                                null))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        Long userId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(put("/api/users/" + userId + "/roles")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleCodes\":[\"SHOP_WORKER\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.roles[0]").value("SHOP_WORKER"));
+    }
+
+    @Test
+    void ownerCanListRoles() throws Exception {
+        mockMvc.perform(get("/api/roles")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.code=='SHOP_WORKER')]").exists())
+                .andExpect(jsonPath("$.data[?(@.code=='OWNER')]").exists());
+    }
+
+    private String loginAndGetAccessToken(String login, String password) throws Exception {
+        LoginRequest loginRequest = new LoginRequest(login, password);
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode data = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        return data.path("accessToken").asText();
+    }
+}

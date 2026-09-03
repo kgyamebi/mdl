@@ -1,0 +1,5 @@
+# Development profile — verbose logging
+logging:
+  level:
+    com.mdl.platform: DEBUG
+    org.springframework.web: DEBUG

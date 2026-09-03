@@ -1,0 +1,26 @@
+# Local development database for MDL Platform
+# Usage: docker compose up -d
+# Requires Docker Desktop on Windows
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: mdl-mariadb
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret_change_me}
+      MARIADB_DATABASE: ${DB_NAME:-mdl_platform}
+      MARIADB_USER: ${DB_USER:-mdl_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-change_me_in_production}
+    volumes:
+      - mdl_mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mdl_mariadb_data:

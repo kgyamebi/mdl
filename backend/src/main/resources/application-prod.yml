@@ -1,0 +1,22 @@
+# Production profile — override via environment variables
+app:
+  owner:
+    seed-enabled: ${OWNER_SEED_ENABLED:false}
+  demo:
+    seed-enabled: ${DEMO_SEED_ENABLED:false}
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    root: WARN
+    com.mdl.platform: INFO

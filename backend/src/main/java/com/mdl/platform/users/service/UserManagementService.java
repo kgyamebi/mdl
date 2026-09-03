@@ -1,0 +1,321 @@
+package com.mdl.platform.users.service;
+
+import com.mdl.platform.authorization.AuthorizationService;
+import com.mdl.platform.authorization.entity.Role;
+import com.mdl.platform.authorization.entity.UserRole;
+import com.mdl.platform.authorization.repository.RoleRepository;
+import com.mdl.platform.authorization.repository.UserRoleRepository;
+import com.mdl.platform.common.dto.PageResponse;
+import com.mdl.platform.common.exception.ConflictException;
+import com.mdl.platform.common.exception.ForbiddenException;
+import com.mdl.platform.common.exception.NotFoundException;
+import com.mdl.platform.locations.entity.UserLocationAssignment;
+import com.mdl.platform.locations.repository.LocationRepository;
+import com.mdl.platform.locations.repository.UserLocationAssignmentRepository;
+import com.mdl.platform.security.UserContext;
+import com.mdl.platform.users.dto.AssignLocationsRequest;
+import com.mdl.platform.users.dto.AssignRolesRequest;
+import com.mdl.platform.users.dto.CreateUserRequest;
+import com.mdl.platform.users.dto.LocationAssignmentResponse;
+import com.mdl.platform.users.dto.UpdateUserRequest;
+import com.mdl.platform.users.dto.UpdateUserStatusRequest;
+import com.mdl.platform.users.dto.UserResponse;
+import com.mdl.platform.users.entity.User;
+import com.mdl.platform.users.entity.UserBusinessMembership;
+import com.mdl.platform.users.repository.UserBusinessMembershipRepository;
+import com.mdl.platform.users.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Service
+public class UserManagementService {
+
+    private static final Set<String> PRIVILEGED_ROLES = Set.of("OWNER", "SUPER_ADMIN");
+
+    private final AuthorizationService authorizationService;
+    private final UserRepository userRepository;
+    private final UserBusinessMembershipRepository membershipRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
+    private final LocationRepository locationRepository;
+    private final UserLocationAssignmentRepository locationAssignmentRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserManagementService(
+            AuthorizationService authorizationService,
+            UserRepository userRepository,
+            UserBusinessMembershipRepository membershipRepository,
+            UserRoleRepository userRoleRepository,
+            RoleRepository roleRepository,
+            LocationRepository locationRepository,
+            UserLocationAssignmentRepository locationAssignmentRepository,
+            PasswordEncoder passwordEncoder) {
+        this.authorizationService = authorizationService;
+        this.userRepository = userRepository;
+        this.membershipRepository = membershipRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.roleRepository = roleRepository;
+        this.locationRepository = locationRepository;
+        this.locationAssignmentRepository = locationAssignmentRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> listUsers(String search, int page, int size) {
+        authorizationService.requirePermission("user:view");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        List<Long> userIds = membershipRepository.findUserIdsByBusinessId(context.businessId());
+        List<User> allUsers = userRepository.findByIdsAndSearch(userIds, normalizeSearch(search));
+
+        return paginate(allUsers.stream().map(user -> toUserResponse(user, context.businessId())).toList(), page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUser(Long userId) {
+        authorizationService.requirePermission("user:view");
+        UserContext context = authorizationService.requireAuthenticated();
+        User user = requireBusinessUser(userId, context.businessId());
+        return toUserResponse(user, context.businessId());
+    }
+
+    @Transactional
+    public UserResponse createUser(CreateUserRequest request) {
+        authorizationService.requirePermission("user:manage");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        if (userRepository.existsByEmailIgnoreCase(request.email())) {
+            throw new ConflictException("Email is already in use");
+        }
+        if (userRepository.existsByUsernameIgnoreCase(request.username())) {
+            throw new ConflictException("Username is already in use");
+        }
+
+        List<String> roleCodes = request.roleCodes() != null ? request.roleCodes() : List.of("VIEWER");
+        validateRoleAssignment(context, roleCodes);
+
+        User user = new User();
+        user.setEmail(request.email().trim().toLowerCase());
+        user.setUsername(request.username().trim());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setPhone(request.phone());
+        user.setStatus("ACTIVE");
+        user = userRepository.save(user);
+
+        UserBusinessMembership membership = new UserBusinessMembership();
+        membership.setUserId(user.getId());
+        membership.setBusinessId(context.businessId());
+        membership.setDefaultMembership(true);
+        membership.setStatus("ACTIVE");
+        membershipRepository.save(membership);
+
+        assignRolesInternal(user.getId(), context.businessId(), roleCodes, context.userId());
+
+        if (request.locationIds() != null && !request.locationIds().isEmpty()) {
+            assignLocationsInternal(user.getId(), context.businessId(), request.locationIds(), "FULL", context.userId());
+        }
+
+        return toUserResponse(user, context.businessId());
+    }
+
+    @Transactional
+    public UserResponse updateUser(Long userId, UpdateUserRequest request) {
+        authorizationService.requirePermission("user:manage");
+        UserContext context = authorizationService.requireAuthenticated();
+        User user = requireBusinessUser(userId, context.businessId());
+
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setPhone(request.phone());
+        userRepository.save(user);
+
+        return toUserResponse(user, context.businessId());
+    }
+
+    @Transactional
+    public UserResponse updateUserStatus(Long userId, UpdateUserStatusRequest request) {
+        authorizationService.requirePermission("user:manage");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        if (userId.equals(context.userId())) {
+            throw new ForbiddenException("You cannot change your own account status");
+        }
+
+        User user = requireBusinessUser(userId, context.businessId());
+        String status = request.status().toUpperCase();
+        if (!Set.of("ACTIVE", "INACTIVE", "SUSPENDED").contains(status)) {
+            throw new IllegalArgumentException("Invalid status");
+        }
+
+        user.setStatus(status);
+        userRepository.save(user);
+
+        UserBusinessMembership membership = membershipRepository
+                .findByUserIdAndBusinessId(userId, context.businessId())
+                .orElseThrow(() -> new NotFoundException("User membership not found"));
+        membership.setStatus(status.equals("ACTIVE") ? "ACTIVE" : "INACTIVE");
+        membershipRepository.save(membership);
+
+        return toUserResponse(user, context.businessId());
+    }
+
+    @Transactional
+    public UserResponse assignRoles(Long userId, AssignRolesRequest request) {
+        authorizationService.requirePermission("user:manage");
+        UserContext context = authorizationService.requireAuthenticated();
+        requireBusinessUser(userId, context.businessId());
+
+        validateRoleAssignment(context, request.roleCodes());
+        preventSelfOwnerRemoval(userId, context, request.roleCodes());
+
+        userRoleRepository.deleteByUserIdAndBusinessId(userId, context.businessId());
+        assignRolesInternal(userId, context.businessId(), request.roleCodes(), context.userId());
+
+        User user = userRepository.findById(userId).orElseThrow();
+        return toUserResponse(user, context.businessId());
+    }
+
+    @Transactional
+    public UserResponse assignLocations(Long userId, AssignLocationsRequest request) {
+        authorizationService.requirePermission("user:manage");
+        UserContext context = authorizationService.requireAuthenticated();
+        requireBusinessUser(userId, context.businessId());
+
+        List<Long> locationIds = request.locations().stream()
+                .map(AssignLocationsRequest.LocationAssignmentItem::locationId)
+                .toList();
+
+        validateLocations(context.businessId(), locationIds);
+
+        locationAssignmentRepository.deleteByUserIdAndBusinessId(userId, context.businessId());
+
+        for (AssignLocationsRequest.LocationAssignmentItem item : request.locations()) {
+            String accessLevel = item.accessLevel() != null ? item.accessLevel().toUpperCase() : "FULL";
+            UserLocationAssignment assignment = new UserLocationAssignment();
+            assignment.setUserId(userId);
+            assignment.setBusinessId(context.businessId());
+            assignment.setLocationId(item.locationId());
+            assignment.setAccessLevel(accessLevel);
+            assignment.setAssignedBy(context.userId());
+            locationAssignmentRepository.save(assignment);
+        }
+
+        User user = userRepository.findById(userId).orElseThrow();
+        return toUserResponse(user, context.businessId());
+    }
+
+    private User requireBusinessUser(Long userId, Long businessId) {
+        if (!membershipRepository.existsByUserIdAndBusinessId(userId, businessId)) {
+            throw new NotFoundException("User not found in this business");
+        }
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+    }
+
+    private void assignRolesInternal(Long userId, Long businessId, List<String> roleCodes, Long assignedBy) {
+        List<Role> roles = roleRepository.findByCodeInAndBusinessIdIsNull(roleCodes);
+        if (roles.size() != new HashSet<>(roleCodes).size()) {
+            throw new NotFoundException("One or more roles were not found");
+        }
+
+        for (Role role : roles) {
+            UserRole userRole = new UserRole();
+            userRole.setUserId(userId);
+            userRole.setRoleId(role.getId());
+            userRole.setBusinessId(businessId);
+            userRole.setAssignedBy(assignedBy);
+            userRoleRepository.save(userRole);
+        }
+    }
+
+    private void assignLocationsInternal(
+            Long userId,
+            Long businessId,
+            List<Long> locationIds,
+            String accessLevel,
+            Long assignedBy) {
+        validateLocations(businessId, locationIds);
+
+        for (Long locationId : locationIds) {
+            UserLocationAssignment assignment = new UserLocationAssignment();
+            assignment.setUserId(userId);
+            assignment.setBusinessId(businessId);
+            assignment.setLocationId(locationId);
+            assignment.setAccessLevel(accessLevel);
+            assignment.setAssignedBy(assignedBy);
+            locationAssignmentRepository.save(assignment);
+        }
+    }
+
+    private void validateLocations(Long businessId, List<Long> locationIds) {
+        List<Long> distinctIds = locationIds.stream().distinct().toList();
+        long found = locationRepository.findByBusinessIdAndIdInAndStatus(businessId, distinctIds, "ACTIVE").size();
+        if (found != distinctIds.size()) {
+            throw new NotFoundException("One or more locations were not found in this business");
+        }
+    }
+
+    private void validateRoleAssignment(UserContext context, List<String> roleCodes) {
+        boolean assigningPrivileged = roleCodes.stream().anyMatch(PRIVILEGED_ROLES::contains);
+        if (assigningPrivileged && !context.roles().contains("OWNER")) {
+            throw new ForbiddenException("Only the owner can assign owner or super admin roles");
+        }
+    }
+
+    private void preventSelfOwnerRemoval(Long userId, UserContext context, List<String> newRoleCodes) {
+        if (!userId.equals(context.userId())) {
+            return;
+        }
+        if (!newRoleCodes.contains("OWNER") && context.roles().contains("OWNER")) {
+            throw new ForbiddenException("You cannot remove your own owner role");
+        }
+    }
+
+    private UserResponse toUserResponse(User user, Long businessId) {
+        Set<String> roles = new HashSet<>(userRoleRepository.findRoleCodesByUserAndBusiness(user.getId(), businessId));
+        List<LocationAssignmentResponse> locations = locationAssignmentRepository
+                .findLocationDetailsByUserAndBusiness(user.getId(), businessId).stream()
+                .map(row -> new LocationAssignmentResponse(
+                        ((Number) row[0]).longValue(),
+                        (String) row[1],
+                        (String) row[2],
+                        (String) row[3],
+                        (String) row[4]))
+                .toList();
+
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getFullName(),
+                user.getPhone(),
+                user.getStatus(),
+                roles,
+                locations,
+                user.getLastLoginAt(),
+                user.getCreatedAt());
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null ? "" : search.trim();
+    }
+
+    private <T> PageResponse<T> paginate(List<T> items, int page, int size) {
+        int safeSize = Math.max(size, 1);
+        int safePage = Math.max(page, 0);
+        int from = Math.min(safePage * safeSize, items.size());
+        int to = Math.min(from + safeSize, items.size());
+        int totalPages = items.isEmpty() ? 0 : (int) Math.ceil((double) items.size() / safeSize);
+
+        return new PageResponse<>(items.subList(from, to), safePage, safeSize, items.size(), totalPages);
+    }
+}

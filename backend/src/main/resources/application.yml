@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: mdl-platform
+
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:mdl_platform}
+    username: ${DB_USER:mdl_user}
+    password: ${DB_PASSWORD:change_me_in_production}
+    driver-class-name: org.mariadb.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MariaDBDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+app:
+  name: MDL Platform
+  version: 0.1.0
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET:mdl-dev-secret-change-in-production-must-be-32-chars-minimum}
+    access-token-expiry-minutes: ${JWT_ACCESS_TOKEN_EXPIRY_MINUTES:15}
+    refresh-token-expiry-days: ${JWT_REFRESH_TOKEN_EXPIRY_DAYS:7}
+  owner:
+    seed-enabled: ${OWNER_SEED_ENABLED:true}
+    email: ${OWNER_EMAIL:owner@mdl.local}
+    username: ${OWNER_USERNAME:owner}
+    password: ${OWNER_PASSWORD:Owner@123!}
+  demo:
+    seed-enabled: ${DEMO_SEED_ENABLED:true}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.mdl.platform: DEBUG
+    org.hibernate.SQL: WARN
