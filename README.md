@@ -82,7 +82,15 @@ cd backend
 mvn test
 ```
 
-Unit tests run without Docker. Integration tests (`FlywayMigrationIntegrationTest`) require Docker and are skipped automatically if Docker is unavailable.
+### 6. Full stack with Docker (optional)
+
+```powershell
+docker compose -f docker-compose.stack.yml up -d --build
+```
+
+Open http://localhost:8081 — nginx serves the UI and proxies `/api` to the backend.
+
+Unit tests run without Docker. Integration tests require Docker and are skipped automatically if Docker is unavailable.
 
 ---
 
@@ -94,6 +102,7 @@ mdl-platform/
 ├── frontend/         React + TypeScript UI
 ├── docs/             Architecture & design docs
 ├── docker-compose.yml
+├── docker-compose.stack.yml
 ├── .env.example
 └── README.md
 ```
@@ -168,6 +177,9 @@ See `.env.example` for the full list.
 | 38 | ✅ Complete | Admin UI (users, settings, locations, approval rules, stocktakes) |
 | 39 | ✅ Complete | CI pipeline + security hardening (rate limit, MFA, httpOnly refresh) |
 | 40 | ✅ Complete | POS multi-line cart + barcode lookup |
+| 41 | ✅ Complete | Audit trail viewer UI |
+| 42 | ✅ Complete | Product management UI (create, edit, barcodes) |
+| 43 | ✅ Complete | Observability (Prometheus, correlation IDs) + Docker deploy |
 
 ---
 

@@ -164,8 +164,37 @@ export interface Product {
   trackInventory: boolean;
   reorderLevel: number | null;
   status: string;
+  barcodes?: ProductBarcode[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProductBarcode {
+  id: number;
+  barcode: string;
+  barcodeType: string;
+  primary: boolean;
+}
+
+export interface ProductCategory {
+  id: number;
+  name: string;
+  code: string;
+  status: string;
+}
+
+export interface AuditLog {
+  id: number;
+  userId: number | null;
+  action: string;
+  module: string;
+  entityType: string | null;
+  entityId: number | null;
+  entityRef: string | null;
+  summary: string;
+  details: string | null;
+  ipAddress: string | null;
+  createdAt: string;
 }
 
 export type ApprovalEntityType =

@@ -144,6 +144,14 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'management',
     permissions: ['approval:view'],
   },
+  {
+    to: '/admin/audit',
+    label: 'Audit trail',
+    shortLabel: 'Audit',
+    icon: '📋',
+    group: 'management',
+    permissions: ['audit:view'],
+  },
 ];
 
 /** Primary bottom-bar slots (permission-filtered at runtime). */

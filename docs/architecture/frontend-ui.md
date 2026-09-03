@@ -215,6 +215,29 @@ Frontend-only refinements for laptop and desktop screens (≥769px):
 | Barcode lookup | `GET /api/products/lookup` integrated into POS scan field |
 | Manual add | Dropdown fallback for non-barcoded items |
 
+## Audit trail (Phase 41)
+
+Route: `/admin/audit` — requires `audit:view`.
+
+| Feature | Details |
+|---------|---------|
+| List | Paginated audit log with module/action/entity filters |
+| Detail | Expandable JSON details, IP address, user and entity refs |
+
+## Product management (Phase 42)
+
+Extended `/products` page for `product:manage`:
+
+| Feature | Details |
+|---------|---------|
+| Create | Full product form with category, pricing, status |
+| Edit | Update all fields except SKU |
+| Barcodes | Add/remove barcodes per product |
+
+## Observability & deploy (Phase 43)
+
+See [observability-deploy.md](./observability-deploy.md).
+
 ## Related
 
 - [Copilot](./copilot.md)

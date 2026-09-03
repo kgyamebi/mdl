@@ -13,10 +13,15 @@ Spring Boot Actuator is enabled with a minimal public surface:
 | `/actuator/health/liveness` | Public | Process is running (Kubernetes liveness) |
 | `/actuator/health/readiness` | Public | App ready to serve traffic (DB connectivity) |
 | `/actuator/info` | Public | Application name and version |
+| `/actuator/prometheus` | Public (restrict in prod) | Prometheus scrape metrics |
 
 The existing `/api/health` endpoint remains for the frontend and returns the MDL `ApiResponse` JSON shape.
 
-Other actuator endpoints are not exposed.
+### Correlation IDs (Phase 43)
+
+All requests log with `correlationId` in MDC and return `X-Correlation-Id` response header. See [observability-deploy.md](./observability-deploy.md).
+
+Other actuator endpoints are not exposed beyond health, info, and prometheus.
 
 ## Security headers
 
@@ -42,8 +47,11 @@ Activate with `SPRING_PROFILES_ACTIVE=prod`.
 `ProductionStartupValidator` fails startup if:
 
 - `JWT_SECRET` is missing, shorter than 32 characters, uses the dev default, or looks like a placeholder (`change_me`, etc.)
+- `OWNER_SEED_ENABLED` or `DEMO_SEED_ENABLED` is true (Phase 39+)
 
-It logs warnings (does not fail) if demo/owner seeding is still enabled in production.
+## Docker full stack (Phase 43)
+
+See [observability-deploy.md](./observability-deploy.md) for `docker compose -f docker-compose.stack.yml up -d --build`.
 
 ## Deploy checklist
 

@@ -58,12 +58,14 @@ management:
     web:
       base-path: /actuator
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
       show-details: never
+    prometheus:
+      enabled: true
   health:
     livenessstate:
       enabled: true
@@ -72,6 +74,9 @@ management:
   info:
     env:
       enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 logging:
   level:
