@@ -1,19 +1,67 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { useUnreadNotificationCount } from '../hooks/useUnreadNotificationCount';
 import { fetchAttentionDashboard } from '../services/alertsService';
+import { fetchApprovalInbox } from '../services/approvalsService';
+import { fetchBusinessOverview } from '../services/dashboardService';
 import { fetchInventorySummary } from '../services/inventoryService';
-import type { InventorySummary, OwnerAttentionReport } from '../types/api';
+import type { AttentionCategory, BusinessOverviewReport, OwnerAttentionReport } from '../types/api';
+
+function formatMoney(value: number, currencyCode: string): string {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function categoryCount(categories: AttentionCategory[], code: string): number {
+  return categories.find((category) => category.code === code)?.count ?? 0;
+}
+
+interface SummaryCardProps {
+  icon: string;
+  label: string;
+  value: string;
+  hint?: string;
+  to: string;
+  tone?: 'default' | 'warn' | 'ok';
+}
+
+function SummaryCard({ icon, label, value, hint, to, tone = 'default' }: SummaryCardProps) {
+  return (
+    <Link to={to} className={`dashboard-card dashboard-card--${tone}`}>
+      <span className="dashboard-card__icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div className="dashboard-card__body">
+        <span className="dashboard-card__label">{label}</span>
+        <strong className="dashboard-card__value">{value}</strong>
+        {hint && <span className="dashboard-card__hint">{hint}</span>}
+      </div>
+    </Link>
+  );
+}
 
 export function DashboardPage() {
   const { user, hasPermission } = useAuth();
+  const unreadCount = useUnreadNotificationCount('/dashboard');
+
   const [attention, setAttention] = useState<OwnerAttentionReport | null>(null);
-  const [inventory, setInventory] = useState<InventorySummary | null>(null);
+  const [overview, setOverview] = useState<BusinessOverviewReport | null>(null);
+  const [inventory, setInventory] = useState<{ lowStockCount: number } | null>(null);
+  const [approvalTotal, setApprovalTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const canViewAlerts = hasPermission('alert:view');
   const canViewInventory = hasPermission('inventory:view');
+  const canViewReports = hasPermission('report:view');
+  const canViewApprovals = hasPermission('approval:view');
+  const canViewSales = hasPermission('sale:view');
+  const canViewTransfers = hasPermission('transfer:view');
+  const currencyCode = user?.currencyCode ?? 'GHS';
 
   useEffect(() => {
     let cancelled = false;
@@ -35,11 +83,29 @@ export function DashboardPage() {
           );
         }
 
-        if (canViewInventory) {
+        if (canViewReports) {
+          tasks.push(
+            fetchBusinessOverview().then((data) => {
+              if (!cancelled) {
+                setOverview(data);
+              }
+            }),
+          );
+        } else if (canViewInventory) {
           tasks.push(
             fetchInventorySummary().then((data) => {
               if (!cancelled) {
-                setInventory(data);
+                setInventory({ lowStockCount: data.lowStockCount });
+              }
+            }),
+          );
+        }
+
+        if (canViewApprovals) {
+          tasks.push(
+            fetchApprovalInbox(0, 1).then((data) => {
+              if (!cancelled) {
+                setApprovalTotal(data.summary.totalCount);
               }
             }),
           );
@@ -61,7 +127,29 @@ export function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [canViewAlerts, canViewInventory]);
+  }, [canViewAlerts, canViewApprovals, canViewInventory, canViewReports]);
+
+  const lowStockCount = overview?.lowStockBalanceCount
+    ?? inventory?.lowStockCount
+    ?? (attention ? categoryCount(attention.categories, 'LOW_STOCK') : null);
+
+  const pendingTransfers = overview?.pendingTransferRequests
+    ?? (attention ? categoryCount(attention.categories, 'PENDING_TRANSFERS') : null);
+
+  const salesTodayValue = canViewReports && overview
+    ? formatMoney(overview.salesAmountToday, overview.currencyCode || currencyCode)
+    : canViewSales
+      ? 'View sales'
+      : null;
+
+  const salesTodayHint = canViewReports && overview
+    ? `${overview.completedSalesToday} completed today`
+    : canViewSales
+      ? 'Open sales module'
+      : undefined;
+
+  const showSummaryCards =
+    canViewReports || canViewInventory || canViewApprovals || canViewSales || unreadCount >= 0;
 
   return (
     <div className="page">
@@ -69,9 +157,7 @@ export function DashboardPage() {
         <div>
           <p className="eyebrow">Overview</p>
           <h1>Dashboard</h1>
-          <p className="subtitle">
-            {user?.businessName} · {user?.currencyCode}
-          </p>
+          <p className="subtitle">{user?.businessName}</p>
         </div>
       </header>
 
@@ -79,105 +165,102 @@ export function DashboardPage() {
       {error && <p className="form__error">{error}</p>}
 
       {!loading && !error && (
-        <div className="grid grid--dashboard">
-          {canViewInventory && inventory && (
-            <section className="panel">
-              <div className="panel__header">
-                <h2>Inventory</h2>
-                <Link to="/inventory" className="panel__link">
-                  View balances
-                </Link>
-              </div>
-              <dl className="stat-grid">
-                <div>
-                  <dt>Balance rows</dt>
-                  <dd>{inventory.balanceRowCount}</dd>
-                </div>
-                <div>
-                  <dt>Low stock</dt>
-                  <dd className={inventory.lowStockCount > 0 ? 'warn' : ''}>
-                    {inventory.lowStockCount}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Pending adjustments</dt>
-                  <dd>{inventory.pendingAdjustmentRequests}</dd>
-                </div>
-                <div>
-                  <dt>Active reservations</dt>
-                  <dd>{inventory.activeReservations}</dd>
-                </div>
-              </dl>
+        <>
+          {showSummaryCards && (
+            <section className="dashboard-summary" aria-label="Business snapshot">
+              {(canViewReports || canViewSales) && salesTodayValue && (
+                <SummaryCard
+                  icon="💰"
+                  label="Today's sales"
+                  value={salesTodayValue}
+                  hint={salesTodayHint}
+                  to="/sales"
+                  tone={overview && overview.completedSalesToday > 0 ? 'ok' : 'default'}
+                />
+              )}
+
+              {canViewInventory && lowStockCount !== null && (
+                <SummaryCard
+                  icon="📦"
+                  label="Low stock"
+                  value={String(lowStockCount)}
+                  hint={lowStockCount > 0 ? 'Needs replenishment' : 'Stock levels OK'}
+                  to="/inventory"
+                  tone={lowStockCount > 0 ? 'warn' : 'ok'}
+                />
+              )}
+
+              {(canViewReports || canViewAlerts || canViewTransfers) && pendingTransfers !== null && (
+                <SummaryCard
+                  icon="🚚"
+                  label="Pending transfers"
+                  value={String(pendingTransfers)}
+                  hint={pendingTransfers > 0 ? 'Awaiting approval' : 'No pending transfers'}
+                  to="/transfers"
+                  tone={pendingTransfers > 0 ? 'warn' : 'default'}
+                />
+              )}
+
+              {canViewApprovals && approvalTotal !== null && (
+                <SummaryCard
+                  icon="✅"
+                  label="Pending approvals"
+                  value={String(approvalTotal)}
+                  hint={approvalTotal > 0 ? 'Review inbox' : 'Inbox clear'}
+                  to="/approvals"
+                  tone={approvalTotal > 0 ? 'warn' : 'ok'}
+                />
+              )}
+
+              <SummaryCard
+                icon="🔔"
+                label="Notifications"
+                value={String(unreadCount)}
+                hint={unreadCount > 0 ? 'Unread messages' : "You're all caught up"}
+                to="/notifications"
+                tone={unreadCount > 0 ? 'warn' : 'ok'}
+              />
             </section>
           )}
 
           {canViewAlerts && attention && (
             <section className="panel">
               <div className="panel__header">
-                <h2>Attention center</h2>
+                <h2>Needs attention</h2>
               </div>
-              <dl className="stat-grid">
-                <div>
-                  <dt>Open alerts</dt>
-                  <dd>{attention.totalOpenAlerts}</dd>
-                </div>
-                <div>
-                  <dt>Critical</dt>
-                  <dd className={attention.criticalCount > 0 ? 'critical' : ''}>
-                    {attention.criticalCount}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Warnings</dt>
-                  <dd className={attention.warningCount > 0 ? 'warn' : ''}>
-                    {attention.warningCount}
-                  </dd>
-                </div>
-              </dl>
-
-              {attention.categories.length > 0 && (
+              {attention.categories.filter((category) => category.code !== 'ALL_CLEAR').length > 0 ? (
                 <ul className="list">
-                  {attention.categories.map((category) => (
-                    <li key={category.code} className="list__item">
-                      <div>
-                        <strong>{category.title}</strong>
-                        <p className="muted">{category.summary}</p>
-                      </div>
-                      <span className={`pill pill--${category.severity.toLowerCase()}`}>
-                        {category.count}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {attention.recentAlerts.length > 0 && (
-                <>
-                  <h3 className="panel__subheading">Recent alerts</h3>
-                  <ul className="list">
-                    {attention.recentAlerts.slice(0, 5).map((alert) => (
-                      <li key={alert.id} className="list__item">
+                  {attention.categories
+                    .filter((category) => category.code !== 'ALL_CLEAR')
+                    .map((category) => (
+                      <li key={category.code} className="list__item">
                         <div>
-                          <strong>{alert.title}</strong>
-                          <p className="muted">{alert.summary}</p>
+                          <strong>{category.title}</strong>
+                          <p className="muted">{category.summary}</p>
                         </div>
-                        <span className={`pill pill--${alert.severity.toLowerCase()}`}>
-                          {alert.severity}
+                        <span className={`pill pill--${category.severity.toLowerCase()}`}>
+                          {category.count}
                         </span>
                       </li>
                     ))}
-                  </ul>
-                </>
+                </ul>
+              ) : (
+                <p className="empty-state">
+                  <span className="empty-state__icon" aria-hidden="true">
+                    ✅
+                  </span>
+                  All clear — nothing needs immediate attention.
+                </p>
               )}
             </section>
           )}
 
-          {!canViewAlerts && !canViewInventory && (
+          {!canViewAlerts && !canViewInventory && !canViewReports && !canViewSales && (
             <section className="panel">
               <p className="muted">No dashboard modules available for your role.</p>
             </section>
           )}
-        </div>
+        </>
       )}
     </div>
   );

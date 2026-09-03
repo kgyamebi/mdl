@@ -63,10 +63,11 @@ com.mdl.platform/
 ├── audit/
 ├── alerts/
 ├── notifications/
+├── copilot/
 ├── reports/
 └── common/
 ```
 
 ## Phase roadmap
 
-See root `README.md` for the full 27-phase plan.
+See root `README.md` for the full phase plan (through phase 35).

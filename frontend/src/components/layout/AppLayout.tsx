@@ -1,32 +1,26 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { filterVisibleNavItems, NAV_ITEMS, splitBottomNavItems } from '../../config/navItems';
 import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
-
-const NAV_ITEMS: Array<{
-  to: string;
-  label: string;
-  permissions: readonly string[];
-  showAlways?: boolean;
-}> = [
-  { to: '/dashboard', label: 'Dashboard', permissions: ['alert:view', 'inventory:view'] },
-  { to: '/inventory', label: 'Inventory', permissions: ['inventory:view'] },
-  { to: '/products', label: 'Products', permissions: ['product:view'] },
-  { to: '/transfers', label: 'Transfers', permissions: ['transfer:view'] },
-  { to: '/imports', label: 'Imports', permissions: ['import:view'] },
-  { to: '/sales', label: 'Sales', permissions: ['sale:view'] },
-  { to: '/reports', label: 'Reports', permissions: ['report:export'] },
-  { to: '/approvals', label: 'Approvals', permissions: ['approval:view'] },
-  { to: '/notifications', label: 'Notifications', permissions: [], showAlways: true },
-];
+import { MobileBottomNav } from './MobileBottomNav';
+import { MobileMoreMenu } from './MobileMoreMenu';
+import { CopilotFloatingButton } from '../copilot/CopilotFloatingButton';
 
 export function AppLayout() {
   const { user, logout, hasAnyPermission } = useAuth();
   const location = useLocation();
   const unreadCount = useUnreadNotificationCount(location.pathname);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  const visibleNav = NAV_ITEMS.filter(
-    (item) => item.showAlways || hasAnyPermission(...item.permissions),
-  );
+  const visibleNav = filterVisibleNavItems(NAV_ITEMS, hasAnyPermission);
+  const { bottomItems, overflowItems } = splitBottomNavItems(visibleNav);
+  const overflowPaths = new Set(overflowItems.map((item) => item.to));
+  const moreActive = moreOpen || overflowPaths.has(location.pathname);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="layout">
@@ -42,10 +36,17 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `layout__nav-link${isActive ? ' layout__nav-link--active' : ''}`
+                `layout__nav-link${item.to === '/copilot' ? ' layout__nav-link--copilot' : ''}${
+                  isActive ? ' layout__nav-link--active' : ''
+                }`
               }
             >
               <span className="layout__nav-label">
+                {item.icon && (
+                  <span className="layout__nav-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                )}
                 {item.label}
                 {item.to === '/notifications' && unreadCount > 0 && (
                   <span className="nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
@@ -66,11 +67,38 @@ export function AppLayout() {
         </div>
       </aside>
 
+      <header className="layout__mobile-header">
+        <div className="layout__mobile-brand">
+          <p className="eyebrow">MDL Platform</p>
+          <strong>{user?.businessName}</strong>
+        </div>
+        <p className="layout__mobile-user muted">{user?.fullName}</p>
+      </header>
+
       <div className="layout__main">
         <main className="layout__content">
           <Outlet />
         </main>
       </div>
+
+      <MobileBottomNav
+        bottomItems={bottomItems}
+        showMore
+        moreActive={moreActive}
+        unreadCount={unreadCount}
+        onOpenMore={() => setMoreOpen(true)}
+      />
+
+      <MobileMoreMenu
+        open={moreOpen}
+        overflowItems={overflowItems}
+        user={user}
+        unreadCount={unreadCount}
+        onClose={() => setMoreOpen(false)}
+        onSignOut={() => logout()}
+      />
+
+      <CopilotFloatingButton />
     </div>
   );
 }

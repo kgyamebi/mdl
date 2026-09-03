@@ -4,6 +4,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { AppShell } from './components/AppShell';
 import { AppLayout } from './components/layout/AppLayout';
 import { ApprovalsPage } from './pages/ApprovalsPage';
+import { CopilotPage } from './pages/CopilotPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { HomePage } from './pages/HomePage';
 import { ImportsPage } from './pages/ImportsPage';
@@ -35,6 +36,7 @@ function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/copilot" element={<CopilotPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

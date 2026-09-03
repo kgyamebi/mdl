@@ -214,12 +214,19 @@ MDL (Modern Dream Light) — currency: GHS
 Every business-scoped table has an index on `business_id`. Foreign keys enforce referential integrity. Unique constraints prevent duplicate codes within a business.
 
 | V23 | Parallel approval steps (any-of at same step_order) |
+| V24 | `V24__create_copilot.sql` | AI Copilot conversations, messages, usage logs |
 
-## Next migrations (Phase 32+)
+### Copilot (Phase 35)
 
-| Planned | Tables |
-|---------|--------|
-| Phase 34 | Optional UI polish (no new migrations expected) |
+| Table | Purpose |
+|-------|---------|
+| `copilot_conversations` | Per-user chat threads |
+| `copilot_messages` | USER / ASSISTANT messages with token counts |
+| `copilot_usage_logs` | Token usage audit trail |
+
+## Next migrations
+
+No further migrations planned for current phases.
 
 ## Verify locally
 

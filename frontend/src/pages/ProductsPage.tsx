@@ -81,8 +81,8 @@ export function ProductsPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap table-wrap--stacked">
+            <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>SKU</th>
@@ -103,17 +103,17 @@ export function ProductsPage() {
                 ) : (
                   items.map((product) => (
                     <tr key={product.id}>
-                      <td>
+                      <td data-label="SKU">
                         <strong>{product.sku}</strong>
                       </td>
-                      <td>
+                      <td data-label="Product">
                         <strong>{product.name}</strong>
                         {product.brand && <div className="muted">{product.brand}</div>}
                       </td>
-                      <td>{product.categoryName ?? '—'}</td>
-                      <td>{formatMoney(product.costPrice, product.currencyCode || currencyCode)}</td>
-                      <td>{formatMoney(product.sellingPrice, product.currencyCode || currencyCode)}</td>
-                      <td>
+                      <td data-label="Category">{product.categoryName ?? '—'}</td>
+                      <td data-label="Cost">{formatMoney(product.costPrice, product.currencyCode || currencyCode)}</td>
+                      <td data-label="Price">{formatMoney(product.sellingPrice, product.currencyCode || currencyCode)}</td>
+                      <td data-label="Status">
                         <span
                           className={`pill ${
                             product.status === 'ACTIVE' ? 'pill--ok' : 'pill--warning'

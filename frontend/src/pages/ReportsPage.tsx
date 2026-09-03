@@ -201,7 +201,7 @@ export function ReportsPage() {
         <section className="panel report-panel">
           <h2>Sales summary</h2>
           <p className="muted">Metric/value pairs for sales totals in a date range.</p>
-          <form className="report-form" onSubmit={handleSalesExport}>
+          <form className="report-form form--touch-friendly" onSubmit={handleSalesExport}>
             <label className="form__field">
               <span>Shop</span>
               <select
@@ -244,7 +244,7 @@ export function ReportsPage() {
         <section className="panel report-panel">
           <h2>Inventory balances</h2>
           <p className="muted">On-hand, reserved, and available stock by location.</p>
-          <form className="report-form" onSubmit={handleInventoryExport}>
+          <form className="report-form form--touch-friendly" onSubmit={handleInventoryExport}>
             <label className="form__field">
               <span>Location</span>
               <select
@@ -277,7 +277,7 @@ export function ReportsPage() {
         <section className="panel report-panel">
           <h2>Low stock</h2>
           <p className="muted">Items at or below reorder level.</p>
-          <form className="report-form" onSubmit={handleLowStockExport}>
+          <form className="report-form form--touch-friendly" onSubmit={handleLowStockExport}>
             <label className="form__field">
               <span>Location</span>
               <select
@@ -329,8 +329,8 @@ export function ReportsPage() {
             {history.length === 0 ? (
               <p className="muted">No exports yet.</p>
             ) : (
-              <div className="table-wrap">
-                <table className="table">
+              <div className="table-wrap table-wrap--stacked">
+                <table className="table table--stacked">
                   <thead>
                     <tr>
                       <th>When</th>

@@ -236,7 +236,7 @@ export function ImportsPage() {
       {showCreateForm && canCreate && (
         <section className="panel">
           <h2>New import order</h2>
-          <form className="form form--grid" onSubmit={handleCreate}>
+          <form className="form form--grid form--touch-friendly" onSubmit={handleCreate}>
             <label className="form__field">
               <span>Supplier name</span>
               <input
@@ -361,8 +361,8 @@ export function ImportsPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap table-wrap--stacked">
+            <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>Import</th>

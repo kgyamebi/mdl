@@ -13,7 +13,7 @@ BrowserRouter
               ├── /              HomePage (public health check)
               ├── /login         LoginPage
               └── ProtectedRoute
-                    └── AppLayout (sidebar nav)
+                    └── AppLayout (sidebar nav on desktop, bottom nav on mobile)
                           ├── /dashboard   DashboardPage
                           ├── /inventory   InventoryPage
                           ├── /products    ProductsPage
@@ -22,7 +22,8 @@ BrowserRouter
                           ├── /sales       SalesPage (POS)
                           ├── /reports     ReportsPage (CSV exports)
                           ├── /approvals   ApprovalsPage (+ approve/reject)
-                          └── /notifications NotificationsPage (read/dismiss)
+                          ├── /notifications NotificationsPage (read/dismiss)
+                          └── /copilot       CopilotPage (AI assistant)
 ```
 
 ## Auth flow
@@ -45,6 +46,7 @@ BrowserRouter
 | Reports | `report:export` | `/api/reports/*/export` + export history |
 | Approvals | `approval:view` | `/api/approvals/inbox` + module approve endpoints |
 | Notifications | *(any authenticated user)* | `/api/notifications` + read/dismiss actions |
+| Copilot | `copilot:use` | `/api/copilot/chat` + suggested prompts |
 
 ## Approval actions (Phase 28)
 
@@ -131,11 +133,50 @@ Route: `/reports` — requires `report:export`.
 
 Service: `frontend/src/services/reportsService.ts`
 
-## Future work
+## Mobile navigation (Phase 34)
 
-- Mobile-first bottom navigation
+On viewports **≤768px** the sidebar is hidden and replaced with:
+
+| Element | Details |
+|---------|---------|
+| Top bar | Business name and signed-in user |
+| Bottom nav | Home, Stock, Sales, Inbox (permission-filtered) |
+| More sheet | Overflow modules, user info, sign out |
+
+Uses `env(safe-area-inset-*)` for notched phones. Desktop keeps the sidebar unchanged.
+
+Config: `frontend/src/config/navItems.ts`
+
+## AI Copilot (Phase 35)
+
+Route: `/copilot` — requires `copilot:use`.
+
+| Feature | Details |
+|---------|---------|
+| Chat | POST `/api/copilot/chat` with conversation history |
+| Prompts | Permission-filtered suggested questions on empty state |
+| Scope | Inventory, sales, transfers, imports, approvals, notifications |
+| Nav | Highlighted sidebar link, mobile More menu, floating action button |
+
+Service: `frontend/src/services/copilotService.ts`
+
+## UX polish (Phase 36)
+
+Frontend-only refinements for non-technical business users:
+
+| Area | Improvements |
+|------|----------------|
+| Bottom nav | Icons, larger touch targets, safe-area insets |
+| Dashboard | At-a-glance summary cards (sales, stock, transfers, approvals, notifications) |
+| Tables | Stacked card layout on mobile — no horizontal scroll |
+| Forms | Touch-friendly spacing, 16px inputs (prevents iOS zoom) |
+| Notifications | Improved empty state |
+| PWA | Clearer install prompt wording |
+| Accessibility | Larger buttons, improved contrast and spacing |
 
 ## Related
+
+- [Copilot](./copilot.md)
 
 - [PWA](./pwa.md)
 - [Approvals](./approvals.md)

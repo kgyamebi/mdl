@@ -175,8 +175,14 @@ export function NotificationsPage() {
       {!loading && !error && (
         <>
           {items.length === 0 ? (
-            <section className="panel">
-              <p className="muted">No notifications match your filters.</p>
+            <section className="panel empty-state-panel">
+              <p className="empty-state">
+                <span className="empty-state__icon" aria-hidden="true">
+                  🔔
+                </span>
+                <strong>No notifications</strong>
+                <span className="muted">You're all caught up.</span>
+              </p>
             </section>
           ) : (
             <ul className="list list--cards">

@@ -86,8 +86,8 @@ export function InventoryPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap table-wrap--stacked">
+            <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>Product</th>
@@ -108,20 +108,20 @@ export function InventoryPage() {
                 ) : (
                   items.map((row) => (
                     <tr key={row.id} className={row.belowReorderLevel ? 'row--warn' : ''}>
-                      <td>
+                      <td data-label="Product">
                         <strong>{row.productSku}</strong>
                         <div className="muted">{row.productName}</div>
                       </td>
-                      <td>
+                      <td data-label="Location">
                         <strong>{row.locationCode}</strong>
                         <div className="muted">{row.locationName}</div>
                       </td>
-                      <td>
+                      <td data-label="On hand">
                         {formatQty(row.quantityOnHand)} {row.unitOfMeasure}
                       </td>
-                      <td>{formatQty(row.quantityReserved)}</td>
-                      <td>{formatQty(row.quantityAvailable)}</td>
-                      <td>
+                      <td data-label="Reserved">{formatQty(row.quantityReserved)}</td>
+                      <td data-label="Available">{formatQty(row.quantityAvailable)}</td>
+                      <td data-label="Status">
                         {row.belowReorderLevel ? (
                           <span className="pill pill--warning">Low stock</span>
                         ) : (

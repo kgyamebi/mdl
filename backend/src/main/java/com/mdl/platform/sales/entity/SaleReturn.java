@@ -27,7 +27,7 @@ public class SaleReturn extends BaseEntity {
     @Column(name = "warehouse_location_id", nullable = false)
     private Long warehouseLocationId;
 
-    @Column(name = "currency_code", nullable = false, length = 3)
+    @Column(name = "currency_code", nullable = false, length = 3, columnDefinition = "CHAR(3)")
     private String currencyCode;
 
     @Column(nullable = false, length = 32)

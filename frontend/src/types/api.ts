@@ -48,6 +48,15 @@ export interface InventorySummary {
   activeReservations: number;
 }
 
+export interface BusinessOverviewReport {
+  currencyCode: string;
+  completedSalesToday: number;
+  salesAmountToday: number;
+  lowStockBalanceCount: number;
+  pendingTransferRequests: number;
+  activeTemporaryPermissions: number;
+}
+
 export interface InventoryBalance {
   id: number;
   locationId: number;
@@ -357,4 +366,26 @@ export interface ReportExport {
   status: string;
   exportedBy: number;
   createdAt: string;
+}
+
+export interface CopilotMessage {
+  id: number;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  createdAt: string;
+}
+
+export interface CopilotChatResponse {
+  conversationId: number;
+  reply: string;
+  provider: string;
+  model: string | null;
+  promptTokens: number;
+  completionTokens: number;
+  suggestedFollowUps: string[];
+}
+
+export interface CopilotSuggestedPrompt {
+  prompt: string;
+  category: string;
 }

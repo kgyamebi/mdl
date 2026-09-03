@@ -257,7 +257,7 @@ export function SalesPage() {
       {showPosForm && canCreate && (
         <section className="panel pos-panel">
           <h2>Quick sale</h2>
-          <form className="form form--grid" onSubmit={handleCreate}>
+          <form className="form form--grid form--touch-friendly pos-panel" onSubmit={handleCreate}>
             <label className="form__field">
               <span>Shop</span>
               <select
@@ -391,8 +391,8 @@ export function SalesPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap table-wrap--stacked">
+            <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>Sale</th>

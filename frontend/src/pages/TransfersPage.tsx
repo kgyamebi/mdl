@@ -206,7 +206,7 @@ export function TransfersPage() {
       {showCreateForm && canCreate && (
         <section className="panel">
           <h2>New stock transfer</h2>
-          <form className="form form--grid" onSubmit={handleCreate}>
+          <form className="form form--grid form--touch-friendly" onSubmit={handleCreate}>
             <label className="form__field">
               <span>From warehouse</span>
               <select
@@ -308,8 +308,8 @@ export function TransfersPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap table-wrap--stacked">
+            <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>Transfer</th>

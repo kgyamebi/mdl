@@ -161,7 +161,9 @@ See `.env.example` for the full list.
 | 31 | ✅ Complete | POS / sales UI (quick sale, history, cancel/refund) |
 | 32 | ✅ Complete | Notifications inbox UI (filters, read/dismiss, unread badge) |
 | 33 | ✅ Complete | Report export downloads UI (CSV + export history) |
-| 34 | Pending | Mobile-first bottom navigation — see `docs/architecture/frontend-ui.md` |
+| 34 | ✅ Complete | Mobile-first bottom navigation (PWA-friendly) |
+| 35 | ✅ Complete | MDL AI Copilot (permission-aware business assistant) |
+| 36 | ✅ Complete | UX polish & mobile navigation refinement |
 
 ---
 
