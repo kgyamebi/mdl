@@ -219,7 +219,7 @@ Every business-scoped table has an index on `business_id`. Foreign keys enforce 
 
 | Planned | Tables |
 |---------|--------|
-| Phase 33+ | Optional UI polish (no new migrations expected) |
+| Phase 34 | Optional UI polish (no new migrations expected) |
 
 ## Verify locally
 

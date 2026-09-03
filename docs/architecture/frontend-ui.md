@@ -20,6 +20,7 @@ BrowserRouter
                           ├── /transfers   TransfersPage
                           ├── /imports     ImportsPage
                           ├── /sales       SalesPage (POS)
+                          ├── /reports     ReportsPage (CSV exports)
                           ├── /approvals   ApprovalsPage (+ approve/reject)
                           └── /notifications NotificationsPage (read/dismiss)
 ```
@@ -41,6 +42,7 @@ BrowserRouter
 | Transfers | `transfer:view` | `/api/stock-transfers` + lifecycle actions |
 | Imports | `import:view` | `/api/imports` + lifecycle actions |
 | Sales | `sale:view` | `/api/sales` + POS create, cancel, refund |
+| Reports | `report:export` | `/api/reports/*/export` + export history |
 | Approvals | `approval:view` | `/api/approvals/inbox` + module approve endpoints |
 | Notifications | *(any authenticated user)* | `/api/notifications` + read/dismiss actions |
 
@@ -117,9 +119,20 @@ Route: `/notifications` — visible to all authenticated users (no special permi
 
 Service: `frontend/src/services/notificationsService.ts`
 
+## Report exports UI (Phase 33)
+
+Route: `/reports` — requires `report:export`.
+
+| Feature | Details |
+|---------|---------|
+| Downloads | Sales summary, inventory balances, low stock (CSV) |
+| Filters | Shop/date range for sales; location and low-stock toggle for inventory |
+| History | Paginated audit log from `/api/reports/exports` |
+
+Service: `frontend/src/services/reportsService.ts`
+
 ## Future work
 
-- Report export downloads
 - Mobile-first bottom navigation
 
 ## Related

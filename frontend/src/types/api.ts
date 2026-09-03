@@ -346,3 +346,15 @@ export interface NotificationItem {
 export interface UnreadNotificationCount {
   unreadCount: number;
 }
+
+export interface ReportExport {
+  id: number;
+  reportType: string;
+  exportFormat: string;
+  fileName: string;
+  rowCount: number;
+  parameters: string;
+  status: string;
+  exportedBy: number;
+  createdAt: string;
+}

@@ -11,6 +11,7 @@ import { InventoryPage } from './pages/InventoryPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ProductsPage } from './pages/ProductsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { SalesPage } from './pages/SalesPage';
 import { TransfersPage } from './pages/TransfersPage';
 import './styles/globals.css';
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/transfers" element={<TransfersPage />} />
                 <Route path="/imports" element={<ImportsPage />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
               </Route>

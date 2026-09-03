@@ -14,6 +14,7 @@ const NAV_ITEMS: Array<{
   { to: '/transfers', label: 'Transfers', permissions: ['transfer:view'] },
   { to: '/imports', label: 'Imports', permissions: ['import:view'] },
   { to: '/sales', label: 'Sales', permissions: ['sale:view'] },
+  { to: '/reports', label: 'Reports', permissions: ['report:export'] },
   { to: '/approvals', label: 'Approvals', permissions: ['approval:view'] },
   { to: '/notifications', label: 'Notifications', permissions: [], showAlways: true },
 ];
