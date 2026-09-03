@@ -132,35 +132,72 @@ export function CopilotPage() {
           <h1>MDL Copilot</h1>
           <p className="subtitle">Inventory and business answers scoped to your role</p>
         </div>
-        <div className="page__header-actions">
+        <div className="page__header-actions copilot-page__header-actions">
           <button type="button" className="btn btn--ghost" onClick={startNewChat} disabled={loading}>
             New chat
           </button>
         </div>
       </header>
 
-      <section className="panel copilot-panel">
-        <div className="copilot-messages" aria-live="polite">
-          {messages.length === 0 && !loading && (
-            <div className="copilot-empty">
-              <p className="muted">Ask about inventory, sales, transfers, imports, approvals, or pending tasks.</p>
-              {!loadingPrompts && prompts.length > 0 && (
-                <div className="copilot-prompts">
-                  {prompts.map((item) => (
-                    <button
-                      key={item.prompt}
-                      type="button"
-                      className="copilot-prompt"
-                      onClick={() => submitMessage(item.prompt)}
-                      disabled={loading}
-                    >
-                      {item.prompt}
-                    </button>
-                  ))}
-                </div>
-              )}
+      <div className="copilot-layout">
+        <aside className="copilot-sidebar panel" aria-label="Suggested prompts">
+          <h2 className="copilot-sidebar__title">Suggested prompts</h2>
+          {loadingPrompts && <p className="muted">Loading prompts…</p>}
+          {!loadingPrompts && prompts.length === 0 && (
+            <p className="muted">No suggested prompts for your role.</p>
+          )}
+          {!loadingPrompts && prompts.length > 0 && (
+            <div className="copilot-prompts copilot-prompts--sidebar">
+              {prompts.map((item) => (
+                <button
+                  key={item.prompt}
+                  type="button"
+                  className="copilot-prompt copilot-prompt--block"
+                  onClick={() => submitMessage(item.prompt)}
+                  disabled={loading}
+                >
+                  {item.prompt}
+                </button>
+              ))}
             </div>
           )}
+          <button
+            type="button"
+            className="btn btn--ghost copilot-sidebar__new"
+            onClick={startNewChat}
+            disabled={loading}
+          >
+            New chat
+          </button>
+          <p className="copilot-sidebar__hint muted">
+            Answers are scoped to your permissions and assigned locations.
+          </p>
+        </aside>
+
+        <section className="panel copilot-panel">
+          <div className="copilot-messages" aria-live="polite">
+            {messages.length === 0 && !loading && (
+              <div className="copilot-empty">
+                <p className="muted">
+                  Ask about inventory, sales, transfers, imports, approvals, or pending tasks.
+                </p>
+                {!loadingPrompts && prompts.length > 0 && (
+                  <div className="copilot-prompts copilot-prompts--inline">
+                    {prompts.map((item) => (
+                      <button
+                        key={item.prompt}
+                        type="button"
+                        className="copilot-prompt"
+                        onClick={() => submitMessage(item.prompt)}
+                        disabled={loading}
+                      >
+                        {item.prompt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
           {messages.map((message) => (
             <div
@@ -198,7 +235,8 @@ export function CopilotPage() {
             {loading ? 'Sending…' : 'Send'}
           </button>
         </form>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

@@ -151,6 +151,8 @@ export function DashboardPage() {
   const showSummaryCards =
     canViewReports || canViewInventory || canViewApprovals || canViewSales || unreadCount >= 0;
 
+  const firstName = user?.fullName?.split(' ')[0] ?? 'there';
+
   return (
     <div className="page">
       <header className="page__header">
@@ -166,6 +168,35 @@ export function DashboardPage() {
 
       {!loading && !error && (
         <>
+          <section className="dashboard-welcome panel">
+            <div className="dashboard-welcome__copy">
+              <h2>Welcome back, {firstName}</h2>
+              <p className="muted">Your business snapshot for today — jump in where you need to.</p>
+            </div>
+            <div className="dashboard-welcome__actions">
+              {canViewSales && (
+                <Link to="/sales" className="btn btn--ghost">
+                  Sales
+                </Link>
+              )}
+              {canViewInventory && (
+                <Link to="/inventory" className="btn btn--ghost">
+                  Inventory
+                </Link>
+              )}
+              {canViewApprovals && (
+                <Link to="/approvals" className="btn btn--ghost">
+                  Approvals
+                </Link>
+              )}
+              {hasPermission('copilot:use') && (
+                <Link to="/copilot" className="btn btn--primary">
+                  Ask Copilot
+                </Link>
+              )}
+            </div>
+          </section>
+
           {showSummaryCards && (
             <section className="dashboard-summary" aria-label="Business snapshot">
               {(canViewReports || canViewSales) && salesTodayValue && (

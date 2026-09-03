@@ -164,6 +164,7 @@ See `.env.example` for the full list.
 | 34 | ✅ Complete | Mobile-first bottom navigation (PWA-friendly) |
 | 35 | ✅ Complete | MDL AI Copilot (permission-aware business assistant) |
 | 36 | ✅ Complete | UX polish & mobile navigation refinement |
+| 37 | ✅ Complete | Desktop UI improvements (layout, master-detail, Copilot) |
 
 ---
 

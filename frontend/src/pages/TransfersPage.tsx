@@ -308,8 +308,12 @@ export function TransfersPage() {
 
       {!loading && !error && (
         <>
-          <div className="table-wrap table-wrap--stacked">
-            <table className="table table--stacked">
+          <div
+            className={`workspace-split${selectedId != null ? ' workspace-split--open' : ''}`}
+          >
+            <div className="workspace-split__list">
+              <div className="table-wrap table-wrap--stacked">
+                <table className="table table--stacked">
               <thead>
                 <tr>
                   <th>Transfer</th>
@@ -378,9 +382,10 @@ export function TransfersPage() {
               </button>
             </div>
           )}
+            </div>
 
           {selectedId != null && (
-            <section className="panel transfer-detail">
+            <aside className="workspace-split__detail panel transfer-detail">
               {detailLoading && <p className="muted">Loading transfer details…</p>}
               {selectedTransfer && (
                 <>
@@ -443,8 +448,9 @@ export function TransfersPage() {
                   />
                 </>
               )}
-            </section>
+            </aside>
           )}
+          </div>
         </>
       )}
     </div>

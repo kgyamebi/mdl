@@ -174,6 +174,19 @@ Frontend-only refinements for non-technical business users:
 | PWA | Clearer install prompt wording |
 | Accessibility | Larger buttons, improved contrast and spacing |
 
+## Desktop UX (Phase 37)
+
+Frontend-only refinements for laptop and desktop screens (≥769px):
+
+| Area | Improvements |
+|------|----------------|
+| Layout | Wider content area (up to 1440px), sticky sidebar with grouped navigation |
+| Navigation | Overview / Operations / Logistics / Management sections with icons |
+| Dashboard | Welcome strip with role-aware quick actions; five-column summary row on large screens |
+| Master-detail | Sales, transfers, and imports use side-by-side list + detail panes (≥1280px) |
+| Tables | Sticky column headers and comfortable row padding on desktop |
+| Copilot | Two-column layout with prompt sidebar; floating button hidden (sidebar link used instead) |
+
 ## Related
 
 - [Copilot](./copilot.md)
