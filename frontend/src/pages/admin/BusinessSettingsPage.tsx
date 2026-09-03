@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { mfaConfirmRequest, mfaSetupRequest } from '../../services/apiClient';
 import { fetchBusiness, fetchCurrencies, updateBusiness } from '../../services/businessService';
-import type { BusinessProfile, CurrencyOption } from '../../types/api';
+import type { BusinessProfile, CurrencyOption, MfaSetupResponse } from '../../types/api';
 
 export function BusinessSettingsPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canManage = hasPermission('business:manage');
 
   const [business, setBusiness] = useState<BusinessProfile | null>(null);
@@ -17,6 +18,9 @@ export function BusinessSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<MfaSetupResponse | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaBusy, setMfaBusy] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchBusiness(), fetchCurrencies()])
@@ -53,6 +57,34 @@ export function BusinessSettingsPage() {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function startMfaSetup() {
+    setMfaBusy(true);
+    setError(null);
+    try {
+      setMfaSetup(await mfaSetupRequest());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start MFA setup');
+    } finally {
+      setMfaBusy(false);
+    }
+  }
+
+  async function confirmMfaSetup(event: FormEvent) {
+    event.preventDefault();
+    setMfaBusy(true);
+    setError(null);
+    try {
+      await mfaConfirmRequest(mfaCode.trim());
+      setMfaSetup(null);
+      setMfaCode('');
+      setSuccess('Two-factor authentication is now enabled.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid verification code');
+    } finally {
+      setMfaBusy(false);
     }
   }
 
@@ -105,6 +137,41 @@ export function BusinessSettingsPage() {
           </form>
         </section>
       )}
+
+      <section className="panel">
+        <h2>Two-factor authentication</h2>
+        <p className="muted">
+          {user?.mfaEnabled
+            ? 'MFA is enabled on your account.'
+            : 'Add an authenticator app for extra sign-in protection.'}
+        </p>
+        {!user?.mfaEnabled && !mfaSetup && (
+          <button type="button" className="btn btn--primary" disabled={mfaBusy} onClick={startMfaSetup}>
+            {mfaBusy ? 'Starting…' : 'Set up MFA'}
+          </button>
+        )}
+        {mfaSetup && (
+          <form className="form" onSubmit={confirmMfaSetup}>
+            <p className="muted">Scan this URL in your authenticator app or enter the secret manually:</p>
+            <code className="code-block">{mfaSetup.otpAuthUrl}</code>
+            <p className="muted">Secret: {mfaSetup.secret}</p>
+            <label className="form__field">
+              <span>Verification code</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                required
+              />
+            </label>
+            <button type="submit" className="btn btn--primary" disabled={mfaBusy}>
+              {mfaBusy ? 'Confirming…' : 'Enable MFA'}
+            </button>
+          </form>
+        )}
+      </section>
     </div>
   );
 }

@@ -9,7 +9,10 @@ import com.mdl.platform.notifications.dto.NotificationResponse;
 import com.mdl.platform.notifications.dto.UnreadNotificationCount;
 import com.mdl.platform.notifications.entity.Notification;
 import com.mdl.platform.notifications.repository.NotificationRepository;
+import com.mdl.platform.notifications.realtime.NotificationRealtimeBroadcaster;
 import com.mdl.platform.security.UserContext;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,20 +26,28 @@ import java.util.Set;
 @Service
 public class NotificationService implements NotificationPublisher {
 
-    private static final Set<String> CATEGORIES = Set.of("ALERT", "SECURITY", "APPROVAL", "SYSTEM");
+    private static final Set<String> CATEGORIES = Set.of("ALERT", "SECURITY", "APPROVAL", "SYSTEM", "OPERATIONS");
     private static final Set<String> ACTIVE_STATUSES = Set.of("UNREAD", "READ");
 
     private final NotificationRepository notificationRepository;
     private final AuthorizationService authorizationService;
     private final UserAuthProfileRepository userAuthProfileRepository;
+    private final NotificationRealtimeBroadcaster realtimeBroadcaster;
+    private final Counter notificationsPublishedCounter;
 
     public NotificationService(
             NotificationRepository notificationRepository,
             AuthorizationService authorizationService,
-            UserAuthProfileRepository userAuthProfileRepository) {
+            UserAuthProfileRepository userAuthProfileRepository,
+            NotificationRealtimeBroadcaster realtimeBroadcaster,
+            MeterRegistry meterRegistry) {
         this.notificationRepository = notificationRepository;
         this.authorizationService = authorizationService;
         this.userAuthProfileRepository = userAuthProfileRepository;
+        this.realtimeBroadcaster = realtimeBroadcaster;
+        this.notificationsPublishedCounter = Counter.builder("mdl.notifications.published")
+                .description("In-app notifications persisted and pushed")
+                .register(meterRegistry);
     }
 
     @Override
@@ -80,6 +91,11 @@ public class NotificationService implements NotificationPublisher {
         notification.setDedupeKey(trimToNull(event.dedupeKey()));
 
         notificationRepository.save(notification);
+        notificationsPublishedCounter.increment();
+
+        long unreadCount = notificationRepository.countByBusinessIdAndUserIdAndStatus(
+                businessId, userId, "UNREAD");
+        realtimeBroadcaster.broadcastToUser(userId, unreadCount, toResponse(notification));
     }
 
     @Transactional(readOnly = true)

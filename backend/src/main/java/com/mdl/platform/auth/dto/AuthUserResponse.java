@@ -11,6 +11,7 @@ public record AuthUserResponse(
         String businessCode,
         String businessName,
         String currencyCode,
+        boolean mfaEnabled,
         Set<String> roles,
         Set<String> permissions
 ) {

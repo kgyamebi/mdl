@@ -319,6 +319,7 @@ public class AuthService {
                 business.getBusinessCode(),
                 business.getBusinessName(),
                 business.getCurrencyCode(),
+                user.isMfaEnabled(),
                 roles,
                 permissions);
     }

@@ -36,7 +36,24 @@ Micrometer Prometheus registry exposes JVM, HTTP, and Spring Boot metrics at:
 
 **Dependency:** `micrometer-registry-prometheus` in `backend/pom.xml`
 
-## Docker deployment
+**Custom metrics (Phase 44):**
+
+| Metric | Description |
+|--------|-------------|
+| `mdl.notifications.published` | Counter — in-app notifications created |
+| `mdl.notification.websocket.sessions` | Gauge — active WebSocket inbox connections |
+
+## Real-time notifications (Phase 44)
+
+WebSocket endpoint: `/ws/notifications?token=<accessToken>`
+
+Push payload:
+
+```json
+{ "type": "INBOX_UPDATE", "unreadCount": 3, "notification": { ... } }
+```
+
+Inventory movements (sales, transfers, adjustments, returns, stocktakes) notify users with `alert:view` via the `OPERATIONS` category.
 
 ### Files
 

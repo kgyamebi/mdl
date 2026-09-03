@@ -31,6 +31,14 @@ class AuthorizationServiceTest {
     }
 
     @Test
+    void ownerBypassesMissingPermission() {
+        setContext(Set.of(), Set.of("OWNER"));
+
+        assertThatCode(() -> authorizationService.requirePermission("alert:view"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void deniesWhenPermissionIsMissing() {
         setContext(Set.of("sale:create"), Set.of("SHOP_WORKER"));
 

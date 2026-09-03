@@ -13,6 +13,7 @@ import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { ReturnsPage } from './pages/ReturnsPage';
 import { SalesPage } from './pages/SalesPage';
 import { StocktakesPage } from './pages/StocktakesPage';
 import { UsersPage } from './pages/admin/UsersPage';
@@ -39,6 +40,7 @@ function App() {
                 <Route path="/transfers" element={<TransfersPage />} />
                 <Route path="/imports" element={<ImportsPage />} />
                 <Route path="/sales" element={<SalesPage />} />
+                <Route path="/returns" element={<ReturnsPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

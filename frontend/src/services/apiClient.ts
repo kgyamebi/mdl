@@ -171,3 +171,14 @@ export async function bootstrapSession(): Promise<LoginResponse | null> {
 export function getHealthStatus() {
   return apiRequest<import('../types/api').HealthStatus>('/api/health', { auth: false });
 }
+
+export async function mfaSetupRequest(): Promise<import('../types/api').MfaSetupResponse> {
+  return apiRequest<import('../types/api').MfaSetupResponse>('/api/auth/mfa/setup', { method: 'POST' });
+}
+
+export async function mfaConfirmRequest(code: string): Promise<void> {
+  await apiRequest<null>('/api/auth/mfa/confirm', {
+    method: 'POST',
+    body: { code },
+  });
+}

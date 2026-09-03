@@ -13,6 +13,7 @@ import com.mdl.platform.inventory.repository.InventoryBalanceRepository;
 import com.mdl.platform.inventory.repository.InventoryTransactionRepository;
 import com.mdl.platform.locations.entity.Location;
 import com.mdl.platform.locations.repository.LocationRepository;
+import com.mdl.platform.notifications.service.OperationalNotificationService;
 import com.mdl.platform.products.entity.Product;
 import com.mdl.platform.products.repository.ProductRepository;
 import com.mdl.platform.security.UserContext;
@@ -37,6 +38,7 @@ public class InventoryLedgerService {
     private final InventoryTransactionRepository transactionRepository;
     private final ProductRepository productRepository;
     private final LocationRepository locationRepository;
+    private final OperationalNotificationService operationalNotificationService;
 
     public InventoryLedgerService(
             AuthorizationService authorizationService,
@@ -44,13 +46,15 @@ public class InventoryLedgerService {
             InventoryBalanceRepository balanceRepository,
             InventoryTransactionRepository transactionRepository,
             ProductRepository productRepository,
-            LocationRepository locationRepository) {
+            LocationRepository locationRepository,
+            OperationalNotificationService operationalNotificationService) {
         this.authorizationService = authorizationService;
         this.locationAccessService = locationAccessService;
         this.balanceRepository = balanceRepository;
         this.transactionRepository = transactionRepository;
         this.productRepository = productRepository;
         this.locationRepository = locationRepository;
+        this.operationalNotificationService = operationalNotificationService;
     }
 
     @Transactional
@@ -148,6 +152,9 @@ public class InventoryLedgerService {
         balance.setQuantityOnHand(newQuantity);
         balance.setLastTransactionId(transaction.getId());
         balance = balanceRepository.save(balance);
+
+        operationalNotificationService.notifyInventoryMovement(
+                context, location, product, quantityChange, transaction);
 
         return new LedgerMovementResult(transaction, balance);
     }

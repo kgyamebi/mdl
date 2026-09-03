@@ -5,6 +5,7 @@ import { fetchShops } from '../services/locationsService';
 import { fetchProducts, lookupProductByBarcode } from '../services/productsService';
 import { createSale, fetchSale, fetchSales } from '../services/salesService';
 import type { PaymentMethod, Product, Sale, Shop } from '../types/api';
+import { printSaleReceipt } from '../utils/printReceipt';
 
 const STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: '', label: 'All statuses' },
@@ -536,9 +537,20 @@ export function SalesPage() {
                         {selectedSale.customerName ? ` · ${selectedSale.customerName}` : ''}
                       </p>
                     </div>
-                    <span className={`pill ${statusPillClass(selectedSale.status)}`}>
-                      {formatStatus(selectedSale.status)}
-                    </span>
+                    <div className="page__header-actions">
+                      {selectedSale.status === 'COMPLETED' && (
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={() => printSaleReceipt(selectedSale, user?.businessName ?? 'MDL')}
+                        >
+                          Print receipt
+                        </button>
+                      )}
+                      <span className={`pill ${statusPillClass(selectedSale.status)}`}>
+                        {formatStatus(selectedSale.status)}
+                      </span>
+                    </div>
                   </div>
 
                   {selectedSale.notes && <p>{selectedSale.notes}</p>}

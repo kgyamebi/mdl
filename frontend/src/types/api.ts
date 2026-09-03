@@ -29,6 +29,7 @@ export interface AuthUser {
   businessCode: string;
   businessName: string;
   currencyCode: string;
+  mfaEnabled: boolean;
   roles: string[];
   permissions: string[];
 }
@@ -46,7 +47,43 @@ export interface LoginResponse {
 export interface MfaSetupResponse {
   secret: string;
   otpAuthUrl: string;
-  qrCodeDataUrl: string;
+}
+
+export interface SaleReturnItem {
+  id: number;
+  saleItemId: number;
+  productId: number;
+  productSku: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineRefund: number;
+}
+
+export interface SaleReturnRefund {
+  id: number;
+  paymentMethod: string;
+  amount: number;
+  reference: string | null;
+  processedBy: number;
+  createdAt: string;
+}
+
+export interface SaleReturn {
+  id: number;
+  returnNumber: string;
+  saleId: number;
+  saleNumber: string;
+  shopId: number;
+  currencyCode: string;
+  status: string;
+  totalRefundAmount: number;
+  reason: string;
+  notes: string | null;
+  processedBy: number;
+  items: SaleReturnItem[];
+  refunds: SaleReturnRefund[];
+  createdAt: string;
 }
 
 export interface InventorySummary {

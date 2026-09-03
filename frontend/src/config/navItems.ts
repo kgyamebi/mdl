@@ -56,6 +56,14 @@ export const NAV_ITEMS: NavItem[] = [
     permissions: ['sale:view'],
   },
   {
+    to: '/returns',
+    label: 'Returns',
+    shortLabel: 'Returns',
+    icon: '↩️',
+    group: 'operations',
+    permissions: ['sale:view'],
+  },
+  {
     to: '/transfers',
     label: 'Transfers',
     shortLabel: 'Transfers',

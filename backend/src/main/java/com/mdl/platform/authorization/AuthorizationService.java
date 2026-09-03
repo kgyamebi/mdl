@@ -20,6 +20,9 @@ public class AuthorizationService {
 
     public void requirePermission(String permission) {
         UserContext context = requireAuthenticated();
+        if (hasPrivilegedRole(context)) {
+            return;
+        }
         if (!context.permissions().contains(permission)) {
             throw new ForbiddenException("You do not have permission to perform this action");
         }
@@ -27,6 +30,9 @@ public class AuthorizationService {
 
     public void requireAnyPermission(String... permissions) {
         UserContext context = requireAuthenticated();
+        if (hasPrivilegedRole(context)) {
+            return;
+        }
         Set<String> granted = context.permissions();
         boolean allowed = Arrays.stream(permissions).anyMatch(granted::contains);
         if (!allowed) {
@@ -46,5 +52,9 @@ public class AuthorizationService {
         if (!context.businessId().equals(businessId)) {
             throw new ForbiddenException("Access denied for this business");
         }
+    }
+
+    private boolean hasPrivilegedRole(UserContext context) {
+        return context.roles().contains("OWNER") || context.roles().contains("SUPER_ADMIN");
     }
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { INBOX_UPDATE_EVENT } from '../hooks/useUnreadNotificationCount';
 import {
   dismissNotification,
   fetchNotifications,
@@ -16,6 +17,7 @@ const STATUS_FILTERS = [
 
 const CATEGORY_FILTERS = [
   { value: '', label: 'All categories' },
+  { value: 'OPERATIONS', label: 'Operations' },
   { value: 'ALERT', label: 'Alerts' },
   { value: 'APPROVAL', label: 'Approvals' },
   { value: 'SECURITY', label: 'Security' },
@@ -24,6 +26,8 @@ const CATEGORY_FILTERS = [
 
 function categoryPillClass(category: string): string {
   switch (category) {
+    case 'OPERATIONS':
+      return 'pill--info';
     case 'ALERT':
       return 'pill--warning';
     case 'SECURITY':
@@ -49,15 +53,13 @@ export function NotificationsPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [actingId, setActingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<number | null>(null);
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
       const response = await fetchNotifications({
         status: statusFilter || undefined,
@@ -67,7 +69,6 @@ export function NotificationsPage() {
       });
       setItems(response.items);
       setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
     } finally {
@@ -79,13 +80,21 @@ export function NotificationsPage() {
     loadNotifications();
   }, [loadNotifications]);
 
+  useEffect(() => {
+    function onInboxUpdate() {
+      loadNotifications();
+    }
+    window.addEventListener(INBOX_UPDATE_EVENT, onInboxUpdate);
+    return () => window.removeEventListener(INBOX_UPDATE_EVENT, onInboxUpdate);
+  }, [loadNotifications]);
+
   async function handleMarkRead(id: number) {
     setActingId(id);
     try {
       await markNotificationRead(id);
-      await loadNotifications();
+      loadNotifications();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mark notification read');
+      setError(err instanceof Error ? err.message : 'Failed to mark read');
     } finally {
       setActingId(null);
     }
@@ -95,23 +104,21 @@ export function NotificationsPage() {
     setActingId(id);
     try {
       await dismissNotification(id);
-      await loadNotifications();
+      loadNotifications();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to dismiss notification');
+      setError(err instanceof Error ? err.message : 'Failed to dismiss');
     } finally {
       setActingId(null);
     }
   }
 
   async function handleMarkAllRead() {
-    setActingId(-1);
+    setLoading(true);
     try {
       await markAllNotificationsRead();
-      await loadNotifications();
+      loadNotifications();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark all read');
-    } finally {
-      setActingId(null);
     }
   }
 
@@ -121,14 +128,14 @@ export function NotificationsPage() {
         <div>
           <p className="eyebrow">Inbox</p>
           <h1>Notifications</h1>
-          <p className="subtitle">{totalElements} notification(s)</p>
+          <p className="subtitle">Live updates for inventory, approvals, and alerts</p>
         </div>
         <div className="page__header-actions">
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={handleMarkAllRead}
             disabled={loading || actingId !== null}
+            onClick={handleMarkAllRead}
           >
             Mark all read
           </button>
@@ -138,7 +145,7 @@ export function NotificationsPage() {
         </div>
       </header>
 
-      <div className="toolbar">
+      <div className="page__filters">
         <select
           className="input input--compact"
           value={statusFilter}
@@ -174,51 +181,35 @@ export function NotificationsPage() {
 
       {!loading && !error && (
         <>
-          {items.length === 0 ? (
-            <section className="panel empty-state-panel">
-              <p className="empty-state">
-                <span className="empty-state__icon" aria-hidden="true">
-                  🔔
-                </span>
-                <strong>No notifications</strong>
-                <span className="muted">You're all caught up.</span>
-              </p>
-            </section>
-          ) : (
-            <ul className="list list--cards">
-              {items.map((item) => (
-                <li
+          <div className="notification-list">
+            {items.length === 0 ? (
+              <p className="muted">No notifications match your filters.</p>
+            ) : (
+              items.map((item) => (
+                <article
                   key={item.id}
-                  className={`approval-card${item.status === 'UNREAD' ? ' notification-card--unread' : ''}`}
+                  className={`notification-card${item.status === 'UNREAD' ? ' notification-card--unread' : ''}`}
                 >
-                  <div className="approval-card__header">
-                    <div>
-                      <span className={`pill ${categoryPillClass(item.category)}`}>
-                        {formatLabel(item.category)}
-                      </span>
-                      {item.entityRef && <strong>{item.entityRef}</strong>}
-                    </div>
-                    <span className={`pill ${item.status === 'UNREAD' ? 'pill--ok' : ''}`}>
-                      {formatLabel(item.status)}
+                  <div className="notification-card__header">
+                    <span className={`pill ${categoryPillClass(item.category)}`}>
+                      {formatLabel(item.category)}
                     </span>
+                    <time className="muted">{new Date(item.createdAt).toLocaleString()}</time>
                   </div>
-                  <h2>{item.title}</h2>
-                  <p className="muted">{item.message}</p>
-                  <p className="muted notification-card__time">
-                    {new Date(item.createdAt).toLocaleString()}
-                  </p>
-                  {item.status !== 'DISMISSED' && (
-                    <div className="approval-actions__buttons">
-                      {item.status === 'UNREAD' && (
-                        <button
-                          type="button"
-                          className="btn btn--primary"
-                          disabled={actingId === item.id}
-                          onClick={() => handleMarkRead(item.id)}
-                        >
-                          {actingId === item.id ? 'Working…' : 'Mark read'}
-                        </button>
-                      )}
+                  <h2 className="notification-card__title">{item.title}</h2>
+                  <p>{item.message}</p>
+                  <div className="notification-card__actions">
+                    {item.status === 'UNREAD' && (
+                      <button
+                        type="button"
+                        className="btn btn--ghost"
+                        disabled={actingId === item.id}
+                        onClick={() => handleMarkRead(item.id)}
+                      >
+                        Mark read
+                      </button>
+                    )}
+                    {item.status !== 'DISMISSED' && (
                       <button
                         type="button"
                         className="btn btn--ghost"
@@ -227,12 +218,12 @@ export function NotificationsPage() {
                       >
                         Dismiss
                       </button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                    )}
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
 
           {totalPages > 1 && (
             <div className="pager">
