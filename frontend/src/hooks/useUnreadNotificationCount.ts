@@ -1,18 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getAccessToken } from '../auth/authStorage';
+import { resolveWebSocketBase } from '../config/apiBase';
 import { fetchUnreadNotificationCount } from '../services/notificationsService';
 import type { NotificationItem } from '../types/api';
 
 export const INBOX_UPDATE_EVENT = 'mdl:inbox-update';
-
-function resolveWebSocketBase(): string {
-  const apiBase = import.meta.env.VITE_API_BASE_URL ?? '';
-  if (apiBase) {
-    return apiBase.replace(/^http/i, 'ws');
-  }
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}`;
-}
 
 export function useUnreadNotificationCount(refreshKey: string | number = 0) {
   const [count, setCount] = useState(0);

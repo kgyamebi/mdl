@@ -99,9 +99,10 @@ body {
   overflow-y: auto;
 }
 
-.layout__brand strong {
+.layout__brand-business {
   display: block;
-  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
 }
 
 .layout__nav {
@@ -1561,4 +1562,109 @@ select.input {
   background: transparent;
   color: var(--color-muted);
   border-color: var(--color-border);
+}
+
+/* modern DL brand logo */
+.mdl-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38em;
+  color: var(--mdl-brand-color, var(--color-text));
+  font-family: var(--font);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  user-select: none;
+}
+
+.mdl-brand--tone-light {
+  --mdl-brand-color: #f4f7fb;
+}
+
+.mdl-brand--tone-dark {
+  --mdl-brand-color: #101820;
+}
+
+.mdl-brand__mark {
+  width: 0.92em;
+  height: 1.1em;
+  flex-shrink: 0;
+  transform: skewX(-11deg);
+  margin-right: -0.04em;
+}
+
+.mdl-brand__word {
+  font-size: 1em;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.mdl-brand__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.15em;
+  padding: 0.2em 0.42em;
+  border: 1.5px solid color-mix(in srgb, currentColor 78%, var(--color-accent) 22%);
+  border-radius: 0.38em;
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  margin-left: 0.06em;
+}
+
+.mdl-brand--full .mdl-brand__word,
+.mdl-brand--auth .mdl-brand__word {
+  opacity: 0.98;
+}
+
+.header .mdl-brand {
+  filter: drop-shadow(0 1px 12px rgba(232, 237, 244, 0.08));
+}
+
+.mdl-brand--full {
+  font-size: clamp(1.65rem, 4vw, 2.15rem);
+}
+
+.mdl-brand--auth {
+  font-size: 1.65rem;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+
+.mdl-brand--sidebar {
+  font-size: 1.05rem;
+}
+
+.mdl-brand--compact {
+  font-size: 0.9rem;
+}
+
+.mdl-brand-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--mdl-brand-color, var(--color-text));
+}
+
+.mdl-brand-icon .mdl-brand__mark {
+  width: 1.15rem;
+  height: 1.35rem;
+}
+
+.layout__brand,
+.layout__mobile-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.layout__brand-business {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--color-muted);
 }

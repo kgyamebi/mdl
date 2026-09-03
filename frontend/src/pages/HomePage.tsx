@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { MdlLogo } from '../components/brand/MdlLogo';
 import { getHealthStatus } from '../services/apiClient';
 import type { HealthStatus } from '../types/api';
 
@@ -31,8 +32,7 @@ export function HomePage() {
   return (
     <div className="landing">
       <header className="header">
-        <p className="eyebrow">Modern Dream Light</p>
-        <h1>MDL Platform</h1>
+        <MdlLogo variant="full" />
         <p className="subtitle">Business management for inventory-based businesses</p>
       </header>
 

@@ -37,8 +37,8 @@ Serve the `dist/` folder over HTTPS in production (required for install prompts 
 
 ## Icons
 
-- `frontend/public/icon.svg` — MDL brand icon (amber on dark background)
-- Referenced in manifest and Apple touch icon meta tags
+- `frontend/public/icon.svg` — stylized **M** mark on dark gradient (favicon / PWA)
+- In-app wordmark is rendered in React (`MdlLogo`) — **M** + **modern** + boxed **DL**, transparent, adapts to UI theme
 
 ## Related
 

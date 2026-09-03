@@ -18,7 +18,7 @@ export function PwaUpdatePrompt() {
 
   return (
     <div className="pwa-banner pwa-banner--update" role="status">
-      <span>A new version of MDL Platform is available.</span>
+      <span>A new version of modern DL is available.</span>
       <div className="pwa-banner__actions">
         <button type="button" className="btn btn--primary" onClick={() => updateServiceWorker(true)}>
           Update

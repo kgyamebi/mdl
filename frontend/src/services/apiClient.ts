@@ -3,9 +3,8 @@ import {
   getAccessToken,
   saveSession,
 } from '../auth/authStorage';
+import { resolveApiBase } from '../config/apiBase';
 import type { ApiResponse, AuthUser, LoginResponse } from '../types/api';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
@@ -20,18 +19,57 @@ export function setSessionExpiredHandler(handler: () => void): void {
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
-  const body: ApiResponse<T> = await response.json();
+  const contentType = response.headers.get('content-type') ?? '';
+  let body: ApiResponse<T>;
+
+  try {
+    if (!contentType.includes('application/json')) {
+      throw new Error('non_json');
+    }
+    body = await response.json();
+  } catch {
+    if (!response.ok) {
+      throw new Error(
+        response.status >= 500
+          ? 'Server is unavailable. Make sure the backend is running on this computer.'
+          : 'Could not reach the server. Check your network connection and try again.',
+      );
+    }
+    throw new Error('Unexpected server response. Please try again.');
+  }
+
   if (!response.ok || !body.success) {
     throw new Error(body.message || `Request failed: ${response.status}`);
   }
   return body.data;
 }
 
+function toFriendlyError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return 'Sign in failed. Please try again.';
+  }
+
+  const message = error.message.trim();
+  if (
+    message === 'The string did not match the expected pattern.' ||
+    message === 'JSON Parse error: Unexpected EOF' ||
+    message.startsWith('JSON Parse error')
+  ) {
+    return 'Could not reach the server. Make sure the backend is running and you are on the same Wi‑Fi network.';
+  }
+
+  if (message === 'Load failed' || message === 'Failed to fetch' || message === 'NetworkError when attempting to fetch resource.') {
+    return 'Cannot reach the server. On your PC, make sure the backend (port 8080) and frontend (port 5173) are both running, then refresh this page.';
+  }
+
+  return message || 'Sign in failed. Please try again.';
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+        const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
           method: 'POST',
           headers: {
             Accept: 'application/json',
@@ -81,7 +119,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   const execute = (tokenOverride?: string) =>
-    fetch(`${API_BASE}${path}`, {
+    fetch(`${resolveApiBase()}${path}`, {
       ...rest,
       credentials: 'include',
       headers: {
@@ -108,20 +146,24 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 export async function loginRequest(login: string, password: string): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE}/api/auth/login`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({ login, password }),
-  });
-  return parseResponse<LoginResponse>(response);
+  try {
+    const response = await fetch(`${resolveApiBase()}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ login, password }),
+    });
+    return await parseResponse<LoginResponse>(response);
+  } catch (error) {
+    throw new Error(toFriendlyError(error));
+  }
 }
 
 export async function mfaChallengeRequest(mfaToken: string, code: string): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE}/api/auth/mfa/challenge`, {
+  const response = await fetch(`${resolveApiBase()}/api/auth/mfa/challenge`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -135,7 +177,7 @@ export async function mfaChallengeRequest(mfaToken: string, code: string): Promi
 
 export async function logoutRequest(): Promise<void> {
   try {
-    await fetch(`${API_BASE}/api/auth/logout`, {
+    await fetch(`${resolveApiBase()}/api/auth/logout`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -154,7 +196,7 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
 }
 
 export async function bootstrapSession(): Promise<LoginResponse | null> {
-  const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+  const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',

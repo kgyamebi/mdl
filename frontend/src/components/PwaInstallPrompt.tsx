@@ -32,7 +32,7 @@ export function PwaInstallPrompt() {
 
   return (
     <div className="pwa-banner pwa-banner--install" role="status">
-      <span>Install MDL Platform for quick access from your phone.</span>
+      <span>Install modern DL for quick access from your phone.</span>
       <div className="pwa-banner__actions">
         <button type="button" className="btn btn--primary" onClick={install}>
           Install

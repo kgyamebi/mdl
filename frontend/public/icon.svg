@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MDL Platform">
-  <rect width="512" height="512" rx="96" fill="#0f1419"/>
-  <circle cx="256" cy="256" r="160" fill="#f5a623" opacity="0.15"/>
-  <path fill="#f5a623" d="M256 96c-17.7 0-32 14.3-32 32v48c0 17.7 14.3 32 32 32s32-14.3 32-32v-48c0-17.7-14.3-32-32-32zm-120 88c-12.5 12.5-12.5 32.8 0 45.3l34 34c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-34-34c-12.5-12.5-32.8-12.5-45.3 0zm240 0c-12.5-12.5-32.8-12.5-45.3 0l-34 34c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l34-34c12.5-12.5 12.5-32.8 0-45.3zM256 288c-53 0-96 43-96 96h192c0-53-43-96-96-96z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="modern DL">
+  <defs>
+    <linearGradient id="bg" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#1a2744"/>
+      <stop offset="100%" stop-color="#0f1419"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <g fill="#e8edf4" transform="translate(256 268)">
+    <path d="M2 36V3h6.8l7.2 21.5L23.2 3H30v33h-5.8V15.8L16.8 34h-1.6L7.8 15.8V36H2z" transform="translate(-80 -48) scale(5.2) skewX(-11)"/>
+  </g>
 </svg>

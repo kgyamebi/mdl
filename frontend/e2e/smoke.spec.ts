@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('home page loads and shows sign in', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'MDL Platform' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'modern DL' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
 });
 

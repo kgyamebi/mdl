@@ -48,7 +48,7 @@ public class MfaService {
         String otpAuthUrl = new QrData.Builder()
                 .label(accountLabel)
                 .secret(secret)
-                .issuer("MDL Platform")
+                .issuer("modern DL")
                 .algorithm(HashingAlgorithm.SHA1)
                 .digits(6)
                 .period(30)

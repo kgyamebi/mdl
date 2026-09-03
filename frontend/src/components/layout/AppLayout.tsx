@@ -11,6 +11,7 @@ import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCou
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMoreMenu } from './MobileMoreMenu';
 import { CopilotFloatingButton } from '../copilot/CopilotFloatingButton';
+import { MdlLogo } from '../brand/MdlLogo';
 
 export function AppLayout() {
   const { user, logout, hasAnyPermission } = useAuth();
@@ -32,8 +33,8 @@ export function AppLayout() {
     <div className="layout">
       <aside className="layout__sidebar">
         <div className="layout__brand">
-          <p className="eyebrow">MDL Platform</p>
-          <strong>{user?.businessName}</strong>
+          <MdlLogo variant="sidebar" />
+          <strong className="layout__brand-business">{user?.businessName}</strong>
         </div>
 
         <nav className="layout__nav" aria-label="Main navigation">
@@ -80,8 +81,8 @@ export function AppLayout() {
 
       <header className="layout__mobile-header">
         <div className="layout__mobile-brand">
-          <p className="eyebrow">MDL Platform</p>
-          <strong>{user?.businessName}</strong>
+          <MdlLogo variant="compact" />
+          <strong className="layout__brand-business">{user?.businessName}</strong>
         </div>
         <p className="layout__mobile-user muted">{user?.fullName}</p>
       </header>

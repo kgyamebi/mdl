@@ -542,7 +542,7 @@ export function SalesPage() {
                         <button
                           type="button"
                           className="btn btn--ghost"
-                          onClick={() => printSaleReceipt(selectedSale, user?.businessName ?? 'MDL')}
+                          onClick={() => printSaleReceipt(selectedSale, user?.businessName ?? 'modern DL')}
                         >
                           Print receipt
                         </button>

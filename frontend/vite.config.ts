@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'MDL Platform',
-        short_name: 'MDL',
+        name: 'modern DL',
+        short_name: 'modern DL',
         description: 'Modern Dream Light — Business Management Platform',
         theme_color: '#0f1419',
         background_color: '#0f1419',
@@ -36,6 +36,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/ws/, /^\/actuator/],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname === '/api/health',
@@ -55,20 +56,24 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],
   server: {
+    host: true,
     port: 5173,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
+        secure: false,
       },
       '/ws': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
+        secure: false,
         ws: true,
       },
     },

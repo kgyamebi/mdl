@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { MdlLogo } from '../components/brand/MdlLogo';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
@@ -50,12 +51,12 @@ export function LoginPage() {
     <div className="auth-page">
       <div className="auth-card">
         <header className="auth-card__header">
-          <p className="eyebrow">Modern Dream Light</p>
+          <MdlLogo variant="auth" />
           <h1>{mfaToken ? 'Verify MFA' : 'Sign in'}</h1>
           <p className="subtitle">Business management platform</p>
         </header>
 
-        <form className="form" onSubmit={handleSubmit}>
+        <form className="form" onSubmit={handleSubmit} noValidate>
           {!mfaToken ? (
             <>
               <label className="form__field">

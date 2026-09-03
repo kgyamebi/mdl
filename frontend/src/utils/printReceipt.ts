@@ -1,4 +1,5 @@
 import type { Sale } from '../types/api';
+import { mdlBrandHtml } from '../components/brand/brandMark';
 
 function formatMoney(value: number, currencyCode: string): string {
   return new Intl.NumberFormat(undefined, {
@@ -30,6 +31,7 @@ export function printSaleReceipt(sale: Sale, businessName: string): void {
   .total { font-weight: bold; border-top: 1px dashed #000; padding-top: 0.4rem; }
   @media print { body { margin: 0; } }
 </style></head><body>
+  ${mdlBrandHtml('#111')}
   <h1>${businessName}</h1>
   <p>Sale ${sale.saleNumber}<br/>${new Date(sale.createdAt).toLocaleString()}</p>
   <table>${lines}</table>

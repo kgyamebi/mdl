@@ -4,9 +4,8 @@ import {
   saveSession,
 } from '../auth/authStorage';
 import type { ApiResponse, LoginResponse, PageResponse, ReportExport } from '../types/api';
+import { resolveApiBase } from '../config/apiBase';
 import { apiRequest } from './apiClient';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 function parseFileName(contentDisposition: string | null, fallback: string): string {
   if (!contentDisposition) {
@@ -19,7 +18,7 @@ function parseFileName(contentDisposition: string | null, fallback: string): str
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+    const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -46,7 +45,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
 async function downloadCsv(path: string, fallbackFileName: string): Promise<void> {
   const execute = (token?: string) =>
-    fetch(`${API_BASE}${path}`, {
+    fetch(`${resolveApiBase()}${path}`, {
       headers: {
         Accept: 'text/csv, application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
