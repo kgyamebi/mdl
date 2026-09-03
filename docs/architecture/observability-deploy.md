@@ -63,6 +63,9 @@ Inventory movements (sales, transfers, adjustments, returns, stocktakes) notify 
 | `frontend/Dockerfile` | Node build + nginx static serve |
 | `frontend/nginx.conf` | SPA routing + `/api` and `/actuator` proxy to backend |
 | `docker-compose.stack.yml` | Full stack: MariaDB + backend + frontend |
+| `docker-compose.prod.yml` | Production VPS: stack + Caddy HTTPS |
+| `deploy/Caddyfile` | Caddy reverse proxy + Let's Encrypt |
+| `docs/deployment/vps.md` | Step-by-step VPS deployment guide |
 
 ### Quick start (full stack)
 
@@ -78,11 +81,12 @@ The frontend container proxies `/api/*` to the backend service, so the SPA uses 
 
 ### Production notes
 
-1. Set `SPRING_PROFILES_ACTIVE=prod` in stack env
+1. Use `docker-compose.prod.yml` on a VPS — see [VPS deployment guide](../deployment/vps.md)
 2. Set strong `JWT_SECRET` (32+ chars)
-3. Set `OWNER_SEED_ENABLED=false` and `DEMO_SEED_ENABLED=false` after initial setup
-4. Restrict `/actuator/prometheus` to your monitoring network (firewall or reverse proxy)
-5. Set `CORS_ALLOWED_ORIGINS` to your public frontend URL when not using nginx proxy
+3. Set `OWNER_SEED_ENABLED=false` after initial owner login
+4. Set `DEMO_SEED_ENABLED=false` (enforced in prod)
+5. Restrict `/actuator/prometheus` to your monitoring network (firewall or reverse proxy)
+6. `CORS_ALLOWED_ORIGINS` is set automatically to your HTTPS domain in prod compose
 
 ## Related
 

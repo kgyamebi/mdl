@@ -64,14 +64,24 @@ class ProductionStartupValidatorTest {
     }
 
     @Test
-    void rejectsOwnerSeedInProduction() {
+    void allowsOwnerSeedForBootstrapInProduction() {
         ReflectionTestUtils.setField(validator, "jwtSecret",
                 "prod-secret-with-enough-entropy-for-hs256-signing-key");
         ReflectionTestUtils.setField(validator, "ownerSeedEnabled", true);
         ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
 
+        assertThatCode(validator::validateProductionConfiguration).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsDemoSeedInProduction() {
+        ReflectionTestUtils.setField(validator, "jwtSecret",
+                "prod-secret-with-enough-entropy-for-hs256-signing-key");
+        ReflectionTestUtils.setField(validator, "ownerSeedEnabled", false);
+        ReflectionTestUtils.setField(validator, "demoSeedEnabled", true);
+
         assertThatThrownBy(validator::validateProductionConfiguration)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("OWNER_SEED_ENABLED");
+                .hasMessageContaining("DEMO_SEED_ENABLED");
     }
 }

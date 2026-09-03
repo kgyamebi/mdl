@@ -90,6 +90,18 @@ docker compose -f docker-compose.stack.yml up -d --build
 
 Open http://localhost:8081 — nginx serves the UI and proxies `/api` to the backend.
 
+### 7. Deploy to a cloud VPS (production)
+
+See **[docs/deployment/vps.md](docs/deployment/vps.md)** for DigitalOcean, Hetzner, AWS, etc.
+
+```bash
+cp .env.production.example .env
+# edit .env — domain, secrets, owner password
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Your app is available at `https://your-domain.example` with automatic HTTPS (Caddy + Let's Encrypt).
+
 Unit tests run without Docker. Integration tests require Docker and are skipped automatically if Docker is unavailable.
 
 ---
@@ -103,7 +115,10 @@ mdl-platform/
 ├── docs/             Architecture & design docs
 ├── docker-compose.yml
 ├── docker-compose.stack.yml
+├── docker-compose.prod.yml   VPS production (HTTPS)
+├── deploy/Caddyfile
 ├── .env.example
+├── .env.production.example
 └── README.md
 ```
 

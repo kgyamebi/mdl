@@ -52,8 +52,9 @@ public class ProductionStartupValidator {
 
     private void warnIfDemoSeedingEnabled() {
         if (ownerSeedEnabled) {
-            throw new IllegalStateException(
-                    "OWNER_SEED_ENABLED must be false in production after initial owner setup");
+            log.warn(
+                    "OWNER_SEED_ENABLED is true in production — owner is created only if missing; "
+                            + "set OWNER_SEED_ENABLED=false after first login");
         }
         if (demoSeedEnabled) {
             throw new IllegalStateException("DEMO_SEED_ENABLED must be false in production");
