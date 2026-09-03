@@ -62,4 +62,16 @@ class ProductionStartupValidatorTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("at least 32 characters");
     }
+
+    @Test
+    void rejectsOwnerSeedInProduction() {
+        ReflectionTestUtils.setField(validator, "jwtSecret",
+                "prod-secret-with-enough-entropy-for-hs256-signing-key");
+        ReflectionTestUtils.setField(validator, "ownerSeedEnabled", true);
+        ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
+
+        assertThatThrownBy(validator::validateProductionConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("OWNER_SEED_ENABLED");
+    }
 }

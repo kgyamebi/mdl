@@ -1,7 +1,6 @@
 import {
   clearSession,
   getAccessToken,
-  getRefreshToken,
   saveSession,
 } from '../auth/authStorage';
 import type { ApiResponse, AuthUser, LoginResponse } from '../types/api';
@@ -29,11 +28,6 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    return null;
-  }
-
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
@@ -43,7 +37,7 @@ async function refreshAccessToken(): Promise<string | null> {
             Accept: 'application/json',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ refreshToken }),
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -51,8 +45,11 @@ async function refreshAccessToken(): Promise<string | null> {
         }
 
         const data = await parseResponse<LoginResponse>(response);
-        saveSession(data.accessToken, data.refreshToken, data.user);
-        return data.accessToken;
+        if (data.accessToken && data.user) {
+          saveSession(data.accessToken, null, data.user);
+          return data.accessToken;
+        }
+        return null;
       } catch {
         return null;
       } finally {
@@ -86,6 +83,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const execute = (tokenOverride?: string) =>
     fetch(`${API_BASE}${path}`, {
       ...rest,
+      credentials: 'include',
       headers: {
         ...requestHeaders,
         ...(tokenOverride ? { Authorization: `Bearer ${tokenOverride}` } : {}),
@@ -110,30 +108,64 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 export async function loginRequest(login: string, password: string): Promise<LoginResponse> {
-  return apiRequest<LoginResponse>('/api/auth/login', {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
     method: 'POST',
-    auth: false,
-    body: { login, password },
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ login, password }),
   });
+  return parseResponse<LoginResponse>(response);
+}
+
+export async function mfaChallengeRequest(mfaToken: string, code: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE}/api/auth/mfa/challenge`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ mfaToken, code }),
+  });
+  return parseResponse<LoginResponse>(response);
 }
 
 export async function logoutRequest(): Promise<void> {
-  const refreshToken = getRefreshToken();
-  if (refreshToken) {
-    try {
-      await apiRequest<void>('/api/auth/logout', {
-        method: 'POST',
-        body: { refreshToken },
-      });
-    } catch {
-      // Clear local session even if revoke fails
-    }
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+  } catch {
+    // Clear local session even if revoke fails
   }
   clearSession();
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
   return apiRequest<AuthUser>('/api/auth/me');
+}
+
+export async function bootstrapSession(): Promise<LoginResponse | null> {
+  const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    return null;
+  }
+  return parseResponse<LoginResponse>(response);
 }
 
 export function getHealthStatus() {

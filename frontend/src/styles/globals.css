@@ -848,6 +848,16 @@ select.input {
   font-size: 1.125rem;
 }
 
+.pos-barcode {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pos-barcode .input {
+  flex: 1;
+}
+
 .approval-card__meta dd {
   margin: 0.125rem 0 0;
 }

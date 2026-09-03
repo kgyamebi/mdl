@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { useAuth } from '../auth/AuthContext';
 import { SaleActionPanel } from '../components/sales/SaleActionPanel';
 import { fetchShops } from '../services/locationsService';
-import { fetchProducts } from '../services/productsService';
+import { fetchProducts, lookupProductByBarcode } from '../services/productsService';
 import { createSale, fetchSale, fetchSales } from '../services/salesService';
 import type { PaymentMethod, Product, Sale, Shop } from '../types/api';
 
@@ -60,6 +60,14 @@ function formatPaymentMethod(method: string): string {
     .join(' ');
 }
 
+interface CartLine {
+  productId: number;
+  sku: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export function SalesPage() {
   const { hasPermission, user } = useAuth();
   const canCreate = hasPermission('sale:create');
@@ -81,23 +89,21 @@ export function SalesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [shopId, setShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [productId, setProductId] = useState('');
-  const [quantity, setQuantity] = useState('1');
-  const [unitPrice, setUnitPrice] = useState('');
+  const [cartLines, setCartLines] = useState<CartLine[]>([]);
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [manualProductId, setManualProductId] = useState('');
+  const [manualQuantity, setManualQuantity] = useState('1');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [paymentReference, setPaymentReference] = useState('');
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [barcodeError, setBarcodeError] = useState<string | null>(null);
 
-  const lineTotal = useMemo(() => {
-    const qty = Number(quantity);
-    const price = Number(unitPrice);
-    if (!Number.isFinite(qty) || !Number.isFinite(price)) {
-      return 0;
-    }
-    return qty * price;
-  }, [quantity, unitPrice]);
+  const cartTotal = useMemo(
+    () => cartLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0),
+    [cartLines],
+  );
 
   const loadSales = useCallback(async () => {
     setLoading(true);
@@ -169,15 +175,66 @@ export function SalesPage() {
       });
   }, [canCreate, showPosForm]);
 
-  useEffect(() => {
-    if (!productId) {
+  function addProductToCart(product: Product, qty: number) {
+    setCartLines((current) => {
+      const existing = current.find((line) => line.productId === product.id);
+      if (existing) {
+        return current.map((line) =>
+          line.productId === product.id
+            ? { ...line, quantity: line.quantity + qty }
+            : line,
+        );
+      }
+      return [
+        ...current,
+        {
+          productId: product.id,
+          sku: product.sku,
+          name: product.name,
+          quantity: qty,
+          unitPrice: product.sellingPrice,
+        },
+      ];
+    });
+  }
+
+  async function handleBarcodeSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = barcodeInput.trim();
+    if (!trimmed) {
       return;
     }
-    const product = products.find((entry) => entry.id === Number(productId));
-    if (product) {
-      setUnitPrice(String(product.sellingPrice));
+    setBarcodeError(null);
+    try {
+      const product = await lookupProductByBarcode(trimmed);
+      addProductToCart(product, 1);
+      setBarcodeInput('');
+    } catch (err) {
+      setBarcodeError(err instanceof Error ? err.message : 'Product not found');
     }
-  }, [productId, products]);
+  }
+
+  function handleManualAdd(event: FormEvent) {
+    event.preventDefault();
+    const product = products.find((entry) => entry.id === Number(manualProductId));
+    const qty = Number(manualQuantity);
+    if (!product || !Number.isFinite(qty) || qty <= 0) {
+      return;
+    }
+    addProductToCart(product, qty);
+    setManualProductId('');
+    setManualQuantity('1');
+  }
+
+  function updateCartLine(productId: number, patch: Partial<Pick<CartLine, 'quantity' | 'unitPrice'>>) {
+    setCartLines((current) =>
+      current.map((line) => (line.productId === productId ? { ...line, ...patch } : line)),
+    );
+  }
+
+  function removeCartLine(productId: number) {
+    setCartLines((current) => current.filter((line) => line.productId !== productId));
+  }
 
   function handleSaleUpdated(sale: Sale) {
     setSelectedSale(sale);
@@ -197,17 +254,15 @@ export function SalesPage() {
         shopId: Number(shopId),
         customerName: customerName.trim() || undefined,
         notes: notes.trim() || undefined,
-        items: [
-          {
-            productId: Number(productId),
-            quantity: Number(quantity),
-            unitPrice: Number(unitPrice),
-          },
-        ],
+        items: cartLines.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+        })),
         payments: [
           {
             paymentMethod,
-            amount: lineTotal,
+            amount: cartTotal,
             reference: paymentReference.trim() || undefined,
           },
         ],
@@ -215,9 +270,10 @@ export function SalesPage() {
       setShowPosForm(false);
       setShopId('');
       setCustomerName('');
-      setProductId('');
-      setQuantity('1');
-      setUnitPrice('');
+      setCartLines([]);
+      setBarcodeInput('');
+      setManualProductId('');
+      setManualQuantity('1');
       setPaymentMethod('CASH');
       setPaymentReference('');
       setNotes('');
@@ -256,112 +312,112 @@ export function SalesPage() {
 
       {showPosForm && canCreate && (
         <section className="panel pos-panel">
-          <h2>Quick sale</h2>
+          <h2>Point of sale</h2>
           <form className="form form--grid form--touch-friendly pos-panel" onSubmit={handleCreate}>
             <label className="form__field">
               <span>Shop</span>
-              <select
-                className="input"
-                value={shopId}
-                onChange={(event) => setShopId(event.target.value)}
-                required
-              >
+              <select className="input" value={shopId} onChange={(e) => setShopId(e.target.value)} required>
                 <option value="">Select shop…</option>
                 {shops.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {shop.code} — {shop.name}
-                  </option>
+                  <option key={shop.id} value={shop.id}>{shop.code} — {shop.name}</option>
                 ))}
               </select>
             </label>
             <label className="form__field">
               <span>Customer name</span>
-              <input
-                type="text"
-                className="input"
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-              />
+              <input type="text" className="input" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
             </label>
-            <label className="form__field">
-              <span>Product</span>
-              <select
-                className="input"
-                value={productId}
-                onChange={(event) => setProductId(event.target.value)}
-                required
-              >
-                <option value="">Select product…</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.sku} — {product.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="form__field">
-              <span>Quantity</span>
-              <input
-                type="number"
-                min="0.01"
-                step="any"
-                className="input"
-                value={quantity}
-                onChange={(event) => setQuantity(event.target.value)}
-                required
-              />
-            </label>
-            <label className="form__field">
-              <span>Unit price ({currencyCode})</span>
-              <input
-                type="number"
-                min="0.01"
-                step="any"
-                className="input"
-                value={unitPrice}
-                onChange={(event) => setUnitPrice(event.target.value)}
-                required
-              />
-            </label>
+            <div className="form__field form__field--wide">
+              <span>Scan barcode</span>
+              <form className="pos-barcode" onSubmit={handleBarcodeSubmit}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Scan or type barcode…"
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="btn btn--ghost">Add</button>
+              </form>
+              {barcodeError && <p className="form__error">{barcodeError}</p>}
+            </div>
+            <div className="form__field form__field--wide">
+              <span>Add manually</span>
+              <form className="pos-barcode" onSubmit={handleManualAdd}>
+                <select className="input" value={manualProductId} onChange={(e) => setManualProductId(e.target.value)}>
+                  <option value="">Select product…</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>{product.sku} — {product.name}</option>
+                  ))}
+                </select>
+                <input type="number" min="0.01" step="any" className="input" value={manualQuantity} onChange={(e) => setManualQuantity(e.target.value)} />
+                <button type="submit" className="btn btn--ghost">Add</button>
+              </form>
+            </div>
+            {cartLines.length > 0 && (
+              <div className="form__field form__field--wide">
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+                    <tbody>
+                      {cartLines.map((line) => (
+                        <tr key={line.productId}>
+                          <td>{line.sku} — {line.name}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              className="input input--compact"
+                              value={line.quantity}
+                              onChange={(e) => updateCartLine(line.productId, { quantity: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0.01"
+                              step="any"
+                              className="input input--compact"
+                              value={line.unitPrice}
+                              onChange={(e) => updateCartLine(line.productId, { unitPrice: Number(e.target.value) })}
+                            />
+                          </td>
+                          <td>{formatMoney(line.quantity * line.unitPrice, currencyCode)}</td>
+                          <td>
+                            <button type="button" className="btn btn--ghost" onClick={() => removeCartLine(line.productId)}>Remove</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             <label className="form__field">
               <span>Payment method</span>
-              <select
-                className="input"
-                value={paymentMethod}
-                onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
-                required
-              >
+              <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} required>
                 {PAYMENT_METHODS.map((method) => (
-                  <option key={method.value} value={method.value}>
-                    {method.label}
-                  </option>
+                  <option key={method.value} value={method.value}>{method.label}</option>
                 ))}
               </select>
             </label>
             <label className="form__field">
               <span>Payment reference</span>
-              <input
-                type="text"
-                className="input"
-                value={paymentReference}
-                onChange={(event) => setPaymentReference(event.target.value)}
-              />
+              <input type="text" className="input" value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} />
             </label>
             <label className="form__field form__field--wide">
               <span>Notes</span>
-              <input
-                type="text"
-                className="input"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-              />
+              <input type="text" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
             <div className="form__field form__field--wide pos-total">
-              <strong>Total due: {formatMoney(lineTotal, currencyCode)}</strong>
+              <strong>Total due: {formatMoney(cartTotal, currencyCode)}</strong>
+              <span className="muted"> · {cartLines.length} line(s)</span>
             </div>
             {createError && <p className="form__error form__field--wide">{createError}</p>}
             <div className="form__field form__field--wide">
-              <button type="submit" className="btn btn--primary" disabled={creating || lineTotal <= 0}>
+              <button type="submit" className="btn btn--primary" disabled={creating || cartTotal <= 0 || cartLines.length === 0}>
                 {creating ? 'Processing…' : 'Complete sale'}
               </button>
             </div>

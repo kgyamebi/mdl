@@ -165,6 +165,9 @@ See `.env.example` for the full list.
 | 35 | ✅ Complete | MDL AI Copilot (permission-aware business assistant) |
 | 36 | ✅ Complete | UX polish & mobile navigation refinement |
 | 37 | ✅ Complete | Desktop UI improvements (layout, master-detail, Copilot) |
+| 38 | ✅ Complete | Admin UI (users, settings, locations, approval rules, stocktakes) |
+| 39 | ✅ Complete | CI pipeline + security hardening (rate limit, MFA, httpOnly refresh) |
+| 40 | ✅ Complete | POS multi-line cart + barcode lookup |
 
 ---
 

@@ -3,6 +3,7 @@ package com.mdl.platform.auth.service;
 import com.mdl.platform.alerts.service.AlertNotifier;
 import com.mdl.platform.audit.service.AuditRecorder;
 import com.mdl.platform.auth.dto.LoginRequest;
+import com.mdl.platform.auth.repository.MfaCredentialRepository;
 import com.mdl.platform.authorization.projection.UserAuthProfile;
 import com.mdl.platform.authorization.repository.UserAuthProfileRepository;
 import com.mdl.platform.common.exception.UnauthorizedException;
@@ -52,14 +53,21 @@ class AuthServiceTest {
     private AlertNotifier alertNotifier;
 
     @Mock
+    private MfaCredentialRepository mfaCredentialRepository;
+
+    @Mock
     private HttpServletRequest httpServletRequest;
 
     private AuthService authService;
+    private MfaChallengeStore mfaChallengeStore;
+    private MfaService mfaService;
 
     private User user;
 
     @BeforeEach
     void setUp() {
+        mfaChallengeStore = new MfaChallengeStore();
+        mfaService = new MfaService(mfaCredentialRepository, userRepository);
         authService = new AuthService(
                 userRepository,
                 userSessionRepository,
@@ -68,6 +76,8 @@ class AuthServiceTest {
                 tokenIssuer,
                 auditRecorder,
                 alertNotifier,
+                mfaChallengeStore,
+                mfaService,
                 15);
 
         user = new User();

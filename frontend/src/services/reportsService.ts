@@ -1,7 +1,6 @@
 import {
   clearSession,
   getAccessToken,
-  getRefreshToken,
   saveSession,
 } from '../auth/authStorage';
 import type { ApiResponse, LoginResponse, PageResponse, ReportExport } from '../types/api';
@@ -19,11 +18,6 @@ function parseFileName(contentDisposition: string | null, fallback: string): str
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    return null;
-  }
-
   try {
     const response = await fetch(`${API_BASE}/api/auth/refresh`, {
       method: 'POST',
@@ -31,7 +25,7 @@ async function refreshAccessToken(): Promise<string | null> {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -39,11 +33,11 @@ async function refreshAccessToken(): Promise<string | null> {
     }
 
     const body: ApiResponse<LoginResponse> = await response.json();
-    if (!body.success) {
+    if (!body.success || !body.data.accessToken || !body.data.user) {
       return null;
     }
 
-    saveSession(body.data.accessToken, body.data.refreshToken, body.data.user);
+    saveSession(body.data.accessToken, null, body.data.user);
     return body.data.accessToken;
   } catch {
     return null;

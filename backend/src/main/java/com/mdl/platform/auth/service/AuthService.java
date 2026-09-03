@@ -5,6 +5,7 @@ import com.mdl.platform.audit.service.AuditRecorder;
 import com.mdl.platform.auth.dto.AuthUserResponse;
 import com.mdl.platform.auth.dto.LoginRequest;
 import com.mdl.platform.auth.dto.LoginResponse;
+import com.mdl.platform.auth.dto.MfaChallengeRequest;
 import com.mdl.platform.authorization.projection.UserAuthProfile;
 import com.mdl.platform.authorization.repository.UserAuthProfileRepository;
 import com.mdl.platform.common.exception.UnauthorizedException;
@@ -42,6 +43,8 @@ public class AuthService {
     private final TokenIssuer tokenIssuer;
     private final AuditRecorder auditRecorder;
     private final AlertNotifier alertNotifier;
+    private final MfaChallengeStore mfaChallengeStore;
+    private final MfaService mfaService;
     private final long accessTokenExpiryMinutes;
 
     public AuthService(
@@ -52,6 +55,8 @@ public class AuthService {
             TokenIssuer tokenIssuer,
             AuditRecorder auditRecorder,
             AlertNotifier alertNotifier,
+            MfaChallengeStore mfaChallengeStore,
+            MfaService mfaService,
             @Value("${app.jwt.access-token-expiry-minutes:15}") long accessTokenExpiryMinutes) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
@@ -60,6 +65,8 @@ public class AuthService {
         this.tokenIssuer = tokenIssuer;
         this.auditRecorder = auditRecorder;
         this.alertNotifier = alertNotifier;
+        this.mfaChallengeStore = mfaChallengeStore;
+        this.mfaService = mfaService;
         this.accessTokenExpiryMinutes = accessTokenExpiryMinutes;
     }
 
@@ -87,6 +94,30 @@ public class AuthService {
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
+        if (user.isMfaEnabled()) {
+            String mfaToken = mfaChallengeStore.issue(user.getId());
+            return LoginResponse.mfaChallenge(mfaToken);
+        }
+
+        return issueLoginResponse(user, httpRequest);
+    }
+
+    @Transactional
+    public LoginResponse completeMfaChallenge(MfaChallengeRequest request, HttpServletRequest httpRequest) {
+        Long userId = mfaChallengeStore.consume(request.mfaToken())
+                .orElseThrow(() -> new UnauthorizedException("Invalid or expired MFA challenge"));
+
+        if (!mfaService.verifyUserCode(userId, request.code())) {
+            throw new UnauthorizedException("Invalid verification code");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedException("User not found"));
+
+        return issueLoginResponse(user, httpRequest);
+    }
+
+    private LoginResponse issueLoginResponse(User user, HttpServletRequest httpRequest) {
         UserAuthProfile.BusinessProfile business = userAuthProfileRepository
                 .findDefaultBusiness(user.getId())
                 .orElseThrow(() -> new UnauthorizedException("No active business membership found"));

@@ -34,11 +34,19 @@ export interface AuthUser {
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
+  accessToken: string | null;
+  refreshToken: string | null;
   tokenType: string;
   expiresInMinutes: number;
-  user: AuthUser;
+  user: AuthUser | null;
+  mfaRequired?: boolean;
+  mfaToken?: string;
+}
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpAuthUrl: string;
+  qrCodeDataUrl: string;
 }
 
 export interface InventorySummary {
@@ -388,4 +396,126 @@ export interface CopilotChatResponse {
 export interface CopilotSuggestedPrompt {
   prompt: string;
   category: string;
+}
+
+export interface ManagedUser {
+  id: number;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string | null;
+  status: string;
+  roles: string[];
+  locations: UserLocationAssignment[];
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface UserLocationAssignment {
+  locationId: number;
+  locationCode: string;
+  locationName: string;
+  accessLevel: string;
+}
+
+export interface RoleOption {
+  code: string;
+  name: string;
+  description: string | null;
+}
+
+export interface PermissionOption {
+  code: string;
+  name: string;
+  module: string;
+}
+
+export interface BusinessProfile {
+  id: number;
+  code: string;
+  name: string;
+  legalName: string | null;
+  currencyCode: string;
+  timezone: string;
+  status: string;
+}
+
+export interface CurrencyOption {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+export interface BusinessStructure {
+  business: { code: string; name: string; currencyCode: string };
+  mainWarehouses: Warehouse[];
+  shopWarehouses: Warehouse[];
+  shops: Shop[];
+  transferRouteCount: number;
+}
+
+export interface TransferRoute {
+  id: number;
+  fromWarehouseId: number;
+  fromWarehouseCode: string;
+  fromWarehouseName: string;
+  toWarehouseId: number;
+  toWarehouseCode: string;
+  toWarehouseName: string;
+  enabled: boolean;
+  notes: string | null;
+}
+
+export interface ApprovalRule {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  entityType: ApprovalEntityType;
+  requiredPermission: string;
+  minAbsQuantity: number | null;
+  enabled: boolean;
+  priority: number;
+  steps: ApprovalRuleStep[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalRuleStep {
+  id: number;
+  stepOrder: number;
+  name: string;
+  requiredPermission: string;
+}
+
+export interface Stocktake {
+  id: number;
+  stocktakeNumber: string;
+  locationId: number;
+  locationCode: string;
+  locationName: string;
+  status: string;
+  notes: string | null;
+  lineCount: number;
+  varianceLineCount: number;
+  totalVariance: number;
+  lines: StocktakeLine[];
+  submittedAt: string | null;
+  approvedAt: string | null;
+  cancelReason: string | null;
+  createdAt: string;
+}
+
+export interface StocktakeLine {
+  id: number;
+  productId: number;
+  productSku: string;
+  productName: string;
+  unitOfMeasure: string;
+  expectedQuantity: number;
+  countedQuantity: number | null;
+  variance: number | null;
+  notes: string | null;
 }

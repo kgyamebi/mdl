@@ -13,3 +13,32 @@ export function fetchLocations(): Promise<LocationSummary[]> {
 export function fetchShops(): Promise<Shop[]> {
   return apiRequest<Shop[]>('/api/shops');
 }
+
+export function fetchBusinessStructure(): Promise<import('../types/api').BusinessStructure> {
+  return apiRequest<import('../types/api').BusinessStructure>('/api/business/structure');
+}
+
+export function fetchTransferRoutes(): Promise<import('../types/api').TransferRoute[]> {
+  return apiRequest<import('../types/api').TransferRoute[]>('/api/transfer-routes');
+}
+
+export function createTransferRoute(payload: {
+  fromWarehouseId: number;
+  toWarehouseId: number;
+  notes?: string;
+}): Promise<import('../types/api').TransferRoute> {
+  return apiRequest<import('../types/api').TransferRoute>('/api/transfer-routes', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function updateTransferRoute(
+  id: number,
+  payload: { enabled: boolean; notes?: string },
+): Promise<import('../types/api').TransferRoute> {
+  return apiRequest<import('../types/api').TransferRoute>(`/api/transfer-routes/${id}`, {
+    method: 'PUT',
+    body: payload,
+  });
+}

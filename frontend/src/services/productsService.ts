@@ -15,3 +15,8 @@ export function fetchProducts(params: {
 
   return apiRequest<PageResponse<Product>>(`/api/products?${query}`);
 }
+
+export function lookupProductByBarcode(barcode: string): Promise<Product> {
+  const query = new URLSearchParams({ barcode: barcode.trim() });
+  return apiRequest<Product>(`/api/products/lookup?${query}`);
+}

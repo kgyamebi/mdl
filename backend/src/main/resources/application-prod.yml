@@ -4,6 +4,8 @@ app:
     seed-enabled: ${OWNER_SEED_ENABLED:false}
   demo:
     seed-enabled: ${DEMO_SEED_ENABLED:false}
+  auth:
+    refresh-cookie-secure: true
 
 spring:
   jpa:

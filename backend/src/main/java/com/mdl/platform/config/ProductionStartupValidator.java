@@ -52,10 +52,11 @@ public class ProductionStartupValidator {
 
     private void warnIfDemoSeedingEnabled() {
         if (ownerSeedEnabled) {
-            log.warn("OWNER_SEED_ENABLED is true in production — disable after initial owner account setup");
+            throw new IllegalStateException(
+                    "OWNER_SEED_ENABLED must be false in production after initial owner setup");
         }
         if (demoSeedEnabled) {
-            log.warn("DEMO_SEED_ENABLED is true in production — disable demo employee seeding");
+            throw new IllegalStateException("DEMO_SEED_ENABLED must be false in production");
         }
     }
 }

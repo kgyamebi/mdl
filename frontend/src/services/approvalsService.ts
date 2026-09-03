@@ -51,3 +51,28 @@ export function rejectInboxItem(
       return Promise.reject(new Error(`Reject is not supported for ${entityType}`));
   }
 }
+
+export function fetchApprovalRules(): Promise<import('../types/api').ApprovalRule[]> {
+  return apiRequest<import('../types/api').ApprovalRule[]>('/api/approvals/rules');
+}
+
+export function fetchApprovalRule(id: number): Promise<import('../types/api').ApprovalRule> {
+  return apiRequest<import('../types/api').ApprovalRule>(`/api/approvals/rules/${id}`);
+}
+
+export function updateApprovalRule(
+  id: number,
+  payload: {
+    name?: string;
+    description?: string;
+    requiredPermission?: string;
+    minAbsQuantity?: number | null;
+    enabled?: boolean;
+    priority?: number;
+  },
+): Promise<import('../types/api').ApprovalRule> {
+  return apiRequest<import('../types/api').ApprovalRule>(`/api/approvals/rules/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}

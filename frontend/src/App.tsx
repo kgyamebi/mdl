@@ -14,6 +14,11 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SalesPage } from './pages/SalesPage';
+import { StocktakesPage } from './pages/StocktakesPage';
+import { UsersPage } from './pages/admin/UsersPage';
+import { BusinessSettingsPage } from './pages/admin/BusinessSettingsPage';
+import { LocationsAdminPage } from './pages/admin/LocationsAdminPage';
+import { ApprovalRulesPage } from './pages/admin/ApprovalRulesPage';
 import { TransfersPage } from './pages/TransfersPage';
 import './styles/globals.css';
 
@@ -37,6 +42,11 @@ function App() {
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/copilot" element={<CopilotPage />} />
+                <Route path="/stocktakes" element={<StocktakesPage />} />
+                <Route path="/admin/users" element={<UsersPage />} />
+                <Route path="/admin/settings" element={<BusinessSettingsPage />} />
+                <Route path="/admin/locations" element={<LocationsAdminPage />} />
+                <Route path="/admin/approval-rules" element={<ApprovalRulesPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

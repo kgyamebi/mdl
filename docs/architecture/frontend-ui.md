@@ -187,6 +187,34 @@ Frontend-only refinements for laptop and desktop screens (≥769px):
 | Tables | Sticky column headers and comfortable row padding on desktop |
 | Copilot | Two-column layout with prompt sidebar; floating button hidden (sidebar link used instead) |
 
+## Admin UI (Phase 38)
+
+| Route | Permission | Features |
+|-------|------------|----------|
+| `/admin/users` | `user:view` / `user:manage` | List, create, edit roles and status |
+| `/admin/settings` | `business:view` / `business:manage` | Business name, currency, timezone |
+| `/admin/locations` | `business:view` | Structure overview + transfer route enable/disable |
+| `/admin/approval-rules` | `approval:view` / `approval:manage` | Rule list, steps, enable/disable |
+| `/stocktakes` | `stock:count` | Create counts, enter quantities, submit |
+
+## Security & CI (Phase 39)
+
+| Area | Details |
+|------|---------|
+| CI | GitHub Actions — backend `mvn test`, frontend `npm run build` |
+| Prod seeds | Fail-fast if `OWNER_SEED_ENABLED` or `DEMO_SEED_ENABLED` in prod |
+| Rate limiting | 10 login attempts per IP per minute |
+| MFA | TOTP setup/confirm + login challenge |
+| Tokens | Refresh token in httpOnly cookie; access token in memory |
+
+## POS cart (Phase 40)
+
+| Feature | Details |
+|---------|---------|
+| Multi-line cart | Add multiple products; merge duplicates by product ID |
+| Barcode lookup | `GET /api/products/lookup` integrated into POS scan field |
+| Manual add | Dropdown fallback for non-barcoded items |
+
 ## Related
 
 - [Copilot](./copilot.md)

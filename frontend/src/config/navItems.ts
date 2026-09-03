@@ -72,6 +72,14 @@ export const NAV_ITEMS: NavItem[] = [
     permissions: ['import:view'],
   },
   {
+    to: '/stocktakes',
+    label: 'Stocktakes',
+    shortLabel: 'Counts',
+    icon: '📋',
+    group: 'operations',
+    permissions: ['stock:count'],
+  },
+  {
     to: '/reports',
     label: 'Reports',
     shortLabel: 'Reports',
@@ -103,6 +111,38 @@ export const NAV_ITEMS: NavItem[] = [
     icon: '💬',
     group: 'management',
     permissions: ['copilot:use'],
+  },
+  {
+    to: '/admin/users',
+    label: 'Users',
+    shortLabel: 'Users',
+    icon: '👥',
+    group: 'management',
+    permissions: ['user:view'],
+  },
+  {
+    to: '/admin/settings',
+    label: 'Settings',
+    shortLabel: 'Settings',
+    icon: '⚙️',
+    group: 'management',
+    permissions: ['business:view'],
+  },
+  {
+    to: '/admin/locations',
+    label: 'Locations',
+    shortLabel: 'Sites',
+    icon: '🏢',
+    group: 'management',
+    permissions: ['business:view'],
+  },
+  {
+    to: '/admin/approval-rules',
+    label: 'Approval rules',
+    shortLabel: 'Rules',
+    icon: '📜',
+    group: 'management',
+    permissions: ['approval:view'],
   },
 ];
 

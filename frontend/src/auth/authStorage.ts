@@ -1,19 +1,19 @@
-import type { AuthUser } from '../types/api';
+import type { AuthUser, LoginResponse } from '../types/api';
 
-const ACCESS_TOKEN_KEY = 'mdl_access_token';
-const REFRESH_TOKEN_KEY = 'mdl_refresh_token';
 const USER_KEY = 'mdl_user';
 
+let memoryAccessToken: string | null = null;
+
 export function getAccessToken(): string | null {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return memoryAccessToken;
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return null;
 }
 
 export function getStoredUser(): AuthUser | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) {
     return null;
   }
@@ -24,14 +24,14 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-export function saveSession(accessToken: string, refreshToken: string, user: AuthUser): void {
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+export function saveSession(accessToken: string | null, _refreshToken: string | null, user: AuthUser): void {
+  memoryAccessToken = accessToken;
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  memoryAccessToken = null;
+  sessionStorage.removeItem(USER_KEY);
 }
+
+export type { LoginResponse };
