@@ -1,7 +1,13 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{
+  to: string;
+  label: string;
+  permissions: readonly string[];
+  showAlways?: boolean;
+}> = [
   { to: '/dashboard', label: 'Dashboard', permissions: ['alert:view', 'inventory:view'] },
   { to: '/inventory', label: 'Inventory', permissions: ['inventory:view'] },
   { to: '/products', label: 'Products', permissions: ['product:view'] },
@@ -9,12 +15,17 @@ const NAV_ITEMS = [
   { to: '/imports', label: 'Imports', permissions: ['import:view'] },
   { to: '/sales', label: 'Sales', permissions: ['sale:view'] },
   { to: '/approvals', label: 'Approvals', permissions: ['approval:view'] },
-] as const;
+  { to: '/notifications', label: 'Notifications', permissions: [], showAlways: true },
+];
 
 export function AppLayout() {
   const { user, logout, hasAnyPermission } = useAuth();
+  const location = useLocation();
+  const unreadCount = useUnreadNotificationCount(location.pathname);
 
-  const visibleNav = NAV_ITEMS.filter((item) => hasAnyPermission(...item.permissions));
+  const visibleNav = NAV_ITEMS.filter(
+    (item) => item.showAlways || hasAnyPermission(...item.permissions),
+  );
 
   return (
     <div className="layout">
@@ -33,7 +44,12 @@ export function AppLayout() {
                 `layout__nav-link${isActive ? ' layout__nav-link--active' : ''}`
               }
             >
-              {item.label}
+              <span className="layout__nav-label">
+                {item.label}
+                {item.to === '/notifications' && unreadCount > 0 && (
+                  <span className="nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                )}
+              </span>
             </NavLink>
           ))}
         </nav>

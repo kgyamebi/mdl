@@ -73,7 +73,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173` — sign in at `/login` for dashboard, inventory, and approvals (Phase 27).
+Frontend runs at `http://localhost:5173` — sign in at `/login` for dashboard, inventory, approvals, and notifications.
 
 ### 5. Run tests
 
@@ -159,7 +159,8 @@ See `.env.example` for the full list.
 | 29 | ✅ Complete | Stock transfers UI (list, create, lifecycle actions) |
 | 30 | ✅ Complete | Import orders UI (list, create, receive, verify) |
 | 31 | ✅ Complete | POS / sales UI (quick sale, history, cancel/refund) |
-| 32+ | Pending | Optional polish — see `docs/architecture/frontend-ui.md` |
+| 32 | ✅ Complete | Notifications inbox UI (filters, read/dismiss, unread badge) |
+| 33+ | Pending | Optional polish — see `docs/architecture/frontend-ui.md` |
 
 ---
 

@@ -20,7 +20,8 @@ BrowserRouter
                           ├── /transfers   TransfersPage
                           ├── /imports     ImportsPage
                           ├── /sales       SalesPage (POS)
-                          └── /approvals   ApprovalsPage (+ approve/reject)
+                          ├── /approvals   ApprovalsPage (+ approve/reject)
+                          └── /notifications NotificationsPage (read/dismiss)
 ```
 
 ## Auth flow
@@ -41,6 +42,7 @@ BrowserRouter
 | Imports | `import:view` | `/api/imports` + lifecycle actions |
 | Sales | `sale:view` | `/api/sales` + POS create, cancel, refund |
 | Approvals | `approval:view` | `/api/approvals/inbox` + module approve endpoints |
+| Notifications | *(any authenticated user)* | `/api/notifications` + read/dismiss actions |
 
 ## Approval actions (Phase 28)
 
@@ -103,9 +105,20 @@ npm run dev
 
 Sign in with demo accounts from root `README.md` (e.g. `owner@mdl.local` / `Owner@123!`).
 
+## Notifications UI (Phase 32)
+
+Route: `/notifications` — visible to all authenticated users (no special permission).
+
+| Feature | Details |
+|---------|---------|
+| List | Paginated inbox with status and category filters |
+| Actions | Mark read, dismiss, mark all read |
+| Nav badge | Unread count on sidebar link |
+
+Service: `frontend/src/services/notificationsService.ts`
+
 ## Future work
 
-- Notifications inbox UI
 - Report export downloads
 - Mobile-first bottom navigation
 

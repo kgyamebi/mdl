@@ -9,6 +9,7 @@ import { HomePage } from './pages/HomePage';
 import { ImportsPage } from './pages/ImportsPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { SalesPage } from './pages/SalesPage';
 import { TransfersPage } from './pages/TransfersPage';
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/imports" element={<ImportsPage />} />
                 <Route path="/sales" element={<SalesPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

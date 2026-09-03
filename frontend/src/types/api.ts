@@ -325,3 +325,24 @@ export interface Sale {
 }
 
 export type PaymentMethod = 'CASH' | 'MOBILE_MONEY' | 'CARD' | 'BANK_TRANSFER';
+
+export interface NotificationItem {
+  id: number;
+  notificationType: string;
+  category: string;
+  title: string;
+  message: string;
+  entityType: string | null;
+  entityId: number | null;
+  entityRef: string | null;
+  sourceType: string | null;
+  sourceId: number | null;
+  status: string;
+  readAt: string | null;
+  dismissedAt: string | null;
+  createdAt: string;
+}
+
+export interface UnreadNotificationCount {
+  unreadCount: number;
+}
