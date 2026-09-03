@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { DetailCloseButton } from '../components/layout/DetailCloseButton';
 import { fetchLocations } from '../services/locationsService';
 import {
   cancelStocktake,
@@ -175,16 +176,16 @@ export function StocktakesPage() {
       {!loading && (
         <div className={`workspace-split${selectedId != null ? ' workspace-split--open' : ''}`}>
           <div className="workspace-split__list">
-            <div className="table-wrap">
-              <table className="table">
+            <div className="table-wrap table-wrap--stacked table-wrap--scroll-hint">
+              <table className="table table--stacked">
                 <thead><tr><th>Count</th><th>Location</th><th>Status</th><th>Lines</th></tr></thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className={`table__row--clickable${selectedId === item.id ? ' table__row--selected' : ''}`} onClick={() => setSelectedId(item.id)}>
-                      <td><strong>{item.stocktakeNumber}</strong></td>
-                      <td>{item.locationCode}</td>
-                      <td>{item.status}</td>
-                      <td>{item.lineCount}</td>
+                    <tr key={item.id} className={`table__row--clickable${selectedId === item.id ? ' table__row--selected' : ''}`} onClick={() => setSelectedId(item.id)} tabIndex={0} role="button">
+                      <td data-label="Count"><strong>{item.stocktakeNumber}</strong></td>
+                      <td data-label="Location">{item.locationCode}</td>
+                      <td data-label="Status">{item.status}</td>
+                      <td data-label="Lines">{item.lineCount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -194,6 +195,7 @@ export function StocktakesPage() {
 
           {selected && (
             <aside className="workspace-split__detail panel">
+              <DetailCloseButton onClose={() => setSelectedId(null)} />
               <div className="panel__header">
                 <div>
                   <h2>{selected.stocktakeNumber}</h2>

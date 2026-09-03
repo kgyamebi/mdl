@@ -63,12 +63,12 @@ export function SaleActionPanel({ sale, onUpdated }: SaleActionPanelProps) {
             />
           </label>
           <div className="approval-actions__buttons">
-            <button type="submit" className="btn btn--danger" disabled={acting}>
+            <button type="submit" className="btn btn--danger btn--touch" disabled={acting}>
               {acting ? 'Working…' : actionType === 'refund' ? 'Confirm refund' : 'Confirm cancel'}
             </button>
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn--ghost btn--touch"
               disabled={acting}
               onClick={() => {
                 setActionType(null);
@@ -91,7 +91,7 @@ export function SaleActionPanel({ sale, onUpdated }: SaleActionPanelProps) {
         {canCancel && (
           <button
             type="button"
-            className="btn btn--danger"
+            className="btn btn--danger btn--touch"
             disabled={acting}
             onClick={() => setActionType('cancel')}
           >
@@ -101,7 +101,7 @@ export function SaleActionPanel({ sale, onUpdated }: SaleActionPanelProps) {
         {canRefund && (
           <button
             type="button"
-            className="btn btn--ghost"
+            className="btn btn--ghost btn--touch"
             disabled={acting}
             onClick={() => setActionType('refund')}
           >

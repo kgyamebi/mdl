@@ -8,6 +8,7 @@ public record ShopResponse(
         LocationSummaryResponse location,
         Long warehouseId,
         String warehouseCode,
-        String warehouseName
+        String warehouseName,
+        Long warehouseLocationId
 ) {
 }

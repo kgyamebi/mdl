@@ -328,6 +328,7 @@ public class LocationQueryService {
                 toLocationSummary(location),
                 shop.getWarehouseId(),
                 warehouse != null ? warehouse.getCode() : null,
-                warehouse != null ? warehouse.getName() : null);
+                warehouse != null ? warehouse.getName() : null,
+                warehouse != null ? warehouse.getLocationId() : null);
     }
 }

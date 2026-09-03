@@ -5,16 +5,20 @@ interface MobileBottomNavProps {
   bottomItems: NavItem[];
   showMore: boolean;
   moreActive: boolean;
+  moreOpen: boolean;
   unreadCount: number;
-  onOpenMore: () => void;
+  onToggleMore: () => void;
+  onNavigate?: () => void;
 }
 
 export function MobileBottomNav({
   bottomItems,
   showMore,
   moreActive,
+  moreOpen,
   unreadCount,
-  onOpenMore,
+  onToggleMore,
+  onNavigate,
 }: MobileBottomNavProps) {
   return (
     <nav className="layout__bottom-nav" aria-label="Mobile navigation">
@@ -25,6 +29,7 @@ export function MobileBottomNav({
           className={({ isActive }) =>
             `layout__bottom-nav-link${isActive ? ' layout__bottom-nav-link--active' : ''}`
           }
+          onClick={onNavigate}
         >
           <span className="layout__bottom-nav-icon" aria-hidden="true">
             {item.icon ?? '•'}
@@ -43,8 +48,8 @@ export function MobileBottomNav({
           className={`layout__bottom-nav-link layout__bottom-nav-link--button${
             moreActive ? ' layout__bottom-nav-link--active' : ''
           }`}
-          onClick={onOpenMore}
-          aria-expanded={moreActive}
+          onClick={onToggleMore}
+          aria-expanded={moreOpen}
           aria-haspopup="dialog"
         >
           <span className="layout__bottom-nav-icon" aria-hidden="true">

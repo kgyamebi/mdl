@@ -51,7 +51,7 @@ public class OperationalNotificationService {
                 "alert:view",
                 new NotificationEvent(
                         "INVENTORY_" + transaction.getTransactionType(),
-                        "OPERATIONS",
+                        "ALERT",
                         title,
                         message,
                         "INVENTORY_TRANSACTION",

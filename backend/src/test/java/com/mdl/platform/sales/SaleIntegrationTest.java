@@ -171,6 +171,54 @@ class SaleIntegrationTest {
     }
 
     @Test
+    void ownerCanCompleteSaleWithInventoryNotification() throws Exception {
+        long shopId = findShopId(ownerToken, "SHOP-B");
+        long productId = findProductId(ownerToken, "MDL-LED-002");
+        BigDecimal unitPrice = findProductPrice(ownerToken, "MDL-LED-002");
+
+        CreateSaleRequest createRequest = new CreateSaleRequest(
+                shopId,
+                null,
+                null,
+                List.of(new CreateSaleRequest.CreateSaleItemRequest(productId, BigDecimal.ONE, null)),
+                List.of(new CreateSaleRequest.CreateSalePaymentRequest("CASH", unitPrice, null)));
+
+        mockMvc.perform(post("/api/sales")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+    }
+
+    @Test
+    void workerCanCompleteSaleAtShopBWithPosStock() throws Exception {
+        long shopId = findShopId(ownerToken, "SHOP-B");
+        long productSwitchId = findProductId(ownerToken, "MDL-SWT-001");
+        long productCableId = findProductId(ownerToken, "MDL-CBL-002");
+        BigDecimal switchPrice = findProductPrice(ownerToken, "MDL-SWT-001");
+        BigDecimal cablePrice = findProductPrice(ownerToken, "MDL-CBL-002");
+        BigDecimal total = switchPrice.add(cablePrice);
+
+        CreateSaleRequest createRequest = new CreateSaleRequest(
+                shopId,
+                "Shop B walk-in",
+                null,
+                List.of(
+                        new CreateSaleRequest.CreateSaleItemRequest(productSwitchId, BigDecimal.ONE, null),
+                        new CreateSaleRequest.CreateSaleItemRequest(productCableId, BigDecimal.ONE, null)),
+                List.of(new CreateSaleRequest.CreateSalePaymentRequest("CASH", total, null)));
+
+        mockMvc.perform(post("/api/sales")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.shopCode").value("SHOP-B"));
+    }
+
+    @Test
     void cannotSellMoreThanAvailableStock() throws Exception {
         long shopId = findShopId(ownerToken, "SHOP-A");
         long productId = findProductId(ownerToken, "MDL-LED-003");

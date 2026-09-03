@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
+import { DetailCloseButton } from '../components/layout/DetailCloseButton';
 import { fetchSale } from '../services/salesService';
 import { createSaleReturn, fetchSaleReturn, fetchSaleReturns } from '../services/saleReturnsService';
 import type { Sale, SaleReturn } from '../types/api';
@@ -188,8 +189,8 @@ export function ReturnsPage() {
       {!loading && (
         <div className={`workspace-split${selectedId != null ? ' workspace-split--open' : ''}`}>
           <div className="workspace-split__list">
-            <div className="table-wrap">
-              <table className="table">
+            <div className="table-wrap table-wrap--stacked table-wrap--scroll-hint">
+              <table className="table table--stacked">
                 <thead>
                   <tr>
                     <th>Return</th>
@@ -212,12 +213,14 @@ export function ReturnsPage() {
                         key={item.id}
                         className={`table__row--clickable${selectedId === item.id ? ' table__row--selected' : ''}`}
                         onClick={() => setSelectedId(item.id)}
+                        tabIndex={0}
+                        role="button"
                       >
-                        <td>{item.returnNumber}</td>
-                        <td>{item.saleNumber}</td>
-                        <td>{formatMoney(item.totalRefundAmount, item.currencyCode || currencyCode)}</td>
-                        <td>{item.reason}</td>
-                        <td>{new Date(item.createdAt).toLocaleString()}</td>
+                        <td data-label="Return">{item.returnNumber}</td>
+                        <td data-label="Sale">{item.saleNumber}</td>
+                        <td data-label="Refund">{formatMoney(item.totalRefundAmount, item.currencyCode || currencyCode)}</td>
+                        <td data-label="Reason">{item.reason}</td>
+                        <td data-label="Date">{new Date(item.createdAt).toLocaleString()}</td>
                       </tr>
                     ))
                   )}
@@ -227,6 +230,7 @@ export function ReturnsPage() {
           </div>
           {selectedReturn && (
             <aside className="workspace-split__detail panel">
+              <DetailCloseButton onClose={() => setSelectedId(null)} />
               <h2>{selectedReturn.returnNumber}</h2>
               <p className="muted">Sale {selectedReturn.saleNumber}</p>
               <p>{selectedReturn.reason}</p>

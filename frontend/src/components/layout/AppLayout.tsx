@@ -27,7 +27,13 @@ export function AppLayout() {
 
   useEffect(() => {
     setMoreOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [location.pathname]);
+
+  useEffect(() => {
+    document.body.classList.toggle('mobile-more-open', moreOpen);
+    return () => document.body.classList.remove('mobile-more-open');
+  }, [moreOpen]);
 
   return (
     <div className="layout">
@@ -97,8 +103,10 @@ export function AppLayout() {
         bottomItems={bottomItems}
         showMore
         moreActive={moreActive}
+        moreOpen={moreOpen}
         unreadCount={unreadCount}
-        onOpenMore={() => setMoreOpen(true)}
+        onToggleMore={() => setMoreOpen((open) => !open)}
+        onNavigate={() => setMoreOpen(false)}
       />
 
       <MobileMoreMenu

@@ -126,10 +126,12 @@ public class InventoryLedgerService {
         BigDecimal newQuantity = balance.getQuantityOnHand().add(quantityChange);
 
         if (newQuantity.compareTo(BigDecimal.ZERO) < 0) {
-            throw new ConflictException("Insufficient stock for this movement");
+            throw new ConflictException(formatInsufficientStockMessage(
+                    product, location, available, quantityChange.abs()));
         }
         if (quantityChange.compareTo(BigDecimal.ZERO) < 0 && available.add(quantityChange).compareTo(BigDecimal.ZERO) < 0) {
-            throw new ConflictException("Insufficient available stock (some quantity is reserved)");
+            throw new ConflictException(formatInsufficientAvailableStockMessage(
+                    product, location, available, balance.getQuantityReserved(), quantityChange.abs()));
         }
         if (newQuantity.compareTo(balance.getQuantityReserved()) < 0) {
             throw new ConflictException("Movement would reduce stock below reserved quantity");
@@ -207,6 +209,39 @@ public class InventoryLedgerService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String formatInsufficientStockMessage(
+            Product product, Location location, BigDecimal available, BigDecimal requested) {
+        return "Insufficient stock for %s at %s: %s %s available, %s %s requested"
+                .formatted(
+                        product.getSku(),
+                        location.getName(),
+                        formatQuantity(available),
+                        product.getUnitOfMeasure(),
+                        formatQuantity(requested),
+                        product.getUnitOfMeasure());
+    }
+
+    private String formatInsufficientAvailableStockMessage(
+            Product product,
+            Location location,
+            BigDecimal available,
+            BigDecimal reserved,
+            BigDecimal requested) {
+        return "Insufficient available stock for %s at %s: %s %s available (%s reserved), %s %s requested"
+                .formatted(
+                        product.getSku(),
+                        location.getName(),
+                        formatQuantity(available),
+                        product.getUnitOfMeasure(),
+                        formatQuantity(reserved),
+                        formatQuantity(requested),
+                        product.getUnitOfMeasure());
+    }
+
+    private String formatQuantity(BigDecimal quantity) {
+        return quantity.stripTrailingZeros().toPlainString();
     }
 
     Map<Long, Location> loadLocations(Long businessId, Iterable<Long> locationIds) {

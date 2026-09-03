@@ -70,8 +70,8 @@ export function ApprovalRulesPage() {
       {!loading && (
         <div className={`workspace-split${selectedId != null ? ' workspace-split--open' : ''}`}>
           <div className="workspace-split__list">
-            <div className="table-wrap">
-              <table className="table">
+            <div className="table-wrap table-wrap--stacked table-wrap--scroll-hint">
+              <table className="table table--stacked">
                 <thead>
                   <tr>
                     <th>Code</th>

@@ -99,8 +99,8 @@ export function LocationsAdminPage() {
 
           <section className="panel">
             <h2>Transfer routes</h2>
-            <div className="table-wrap">
-              <table className="table">
+            <div className="table-wrap table-wrap--stacked table-wrap--scroll-hint">
+              <table className="table table--stacked">
                 <thead>
                   <tr>
                     <th>From</th>

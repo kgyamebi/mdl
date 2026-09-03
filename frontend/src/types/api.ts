@@ -356,6 +356,7 @@ export interface Shop {
   warehouseId: number;
   warehouseCode: string;
   warehouseName: string;
+  warehouseLocationId: number;
 }
 
 export interface SaleItem {
