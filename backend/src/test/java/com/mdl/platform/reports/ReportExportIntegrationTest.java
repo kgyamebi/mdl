@@ -89,6 +89,21 @@ class ReportExportIntegrationTest {
     }
 
     @Test
+    void ownerCanExportSalesSummaryPdf() throws Exception {
+        mockMvc.perform(get("/api/reports/sales-summary/export/pdf")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("sales-summary-MDL")))
+                .andExpect(header().string("Content-Type", containsString("application/pdf")));
+
+        mockMvc.perform(get("/api/reports/exports")
+                        .param("reportType", "SALES_SUMMARY")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].exportFormat").value("PDF"));
+    }
+
+    @Test
     void workerCannotExportReports() throws Exception {
         mockMvc.perform(get("/api/reports/sales-summary/export")
                         .header("Authorization", "Bearer " + workerToken))

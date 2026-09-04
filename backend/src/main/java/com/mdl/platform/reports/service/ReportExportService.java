@@ -23,6 +23,7 @@ import com.mdl.platform.reports.repository.ReportExportRepository;
 import com.mdl.platform.security.UserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -194,7 +195,7 @@ public class ReportExportService {
                 parameters);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = DataIntegrityViolationException.class)
     public CsvExportResult exportSalesSummaryPdf(Long shopId, Instant from, Instant to) {
         authorizationService.requirePermission("report:export");
         UserContext context = authorizationService.requireAuthenticated();
@@ -236,7 +237,7 @@ public class ReportExportService {
                 parameters);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = DataIntegrityViolationException.class)
     public CsvExportResult exportInventoryBalancesPdf(Long locationId, boolean lowStockOnly) {
         authorizationService.requirePermission("report:export");
         UserContext context = authorizationService.requireAuthenticated();
@@ -407,18 +408,36 @@ public class ReportExportService {
         export.setRowCount(rowCount);
         export.setParameters(serializeParameters(parameters));
         export.setStatus("COMPLETED");
-        exportRepository.save(export);
 
-        auditRecorder.record(context, new AuditService.AuditEvent(
-                "REPORT_EXPORTED",
-                "REPORTS",
-                "REPORT_EXPORT",
-                export.getId(),
-                fileName,
-                "Exported " + reportType + " report (" + rowCount + " rows)",
-                Map.of("reportType", reportType, "rowCount", rowCount, "fileName", fileName)));
+        Long exportId = persistExportRecord(context, export, reportType, fileName, rowCount);
+        return new CsvExportResult(content, fileName, contentType, rowCount, exportId);
+    }
 
-        return new CsvExportResult(content, fileName, contentType, rowCount, export.getId());
+    private Long persistExportRecord(
+            UserContext context,
+            ReportExport export,
+            String reportType,
+            String fileName,
+            int rowCount) {
+        try {
+            exportRepository.save(export);
+            auditRecorder.record(context, new AuditService.AuditEvent(
+                    "REPORT_EXPORTED",
+                    "REPORTS",
+                    "REPORT_EXPORT",
+                    export.getId(),
+                    fileName,
+                    "Exported " + reportType + " report (" + rowCount + " rows)",
+                    Map.of("reportType", reportType, "rowCount", rowCount, "fileName", fileName)));
+            return export.getId();
+        } catch (DataIntegrityViolationException ex) {
+            log.error(
+                    "Could not persist {} export history for {} (export will still be delivered)",
+                    export.getExportFormat(),
+                    fileName,
+                    ex);
+            return null;
+        }
     }
 
     private void appendMetric(StringBuilder csv, String metric, Object value) {
