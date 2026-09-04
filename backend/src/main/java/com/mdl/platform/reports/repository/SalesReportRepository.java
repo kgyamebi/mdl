@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 public interface SalesReportRepository extends JpaRepository<Sale, Long> {
 
@@ -14,6 +15,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
             SELECT COUNT(s) FROM Sale s
             WHERE s.businessId = :businessId
               AND s.status = :status
+              AND (:scopedShopIds IS NULL OR s.shopId IN :scopedShopIds)
               AND (:shopId IS NULL OR s.shopId = :shopId)
               AND (:from IS NULL OR s.createdAt >= :from)
               AND (:to IS NULL OR s.createdAt <= :to)
@@ -22,6 +24,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
             @Param("businessId") Long businessId,
             @Param("status") String status,
             @Param("shopId") Long shopId,
+            @Param("scopedShopIds") List<Long> scopedShopIds,
             @Param("from") Instant from,
             @Param("to") Instant to);
 
@@ -29,6 +32,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
             SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s
             WHERE s.businessId = :businessId
               AND s.status = :status
+              AND (:scopedShopIds IS NULL OR s.shopId IN :scopedShopIds)
               AND (:shopId IS NULL OR s.shopId = :shopId)
               AND (:from IS NULL OR s.createdAt >= :from)
               AND (:to IS NULL OR s.createdAt <= :to)
@@ -37,6 +41,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
             @Param("businessId") Long businessId,
             @Param("status") String status,
             @Param("shopId") Long shopId,
+            @Param("scopedShopIds") List<Long> scopedShopIds,
             @Param("from") Instant from,
             @Param("to") Instant to);
 
@@ -46,6 +51,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
             JOIN Sale s ON s.id = si.saleId
             WHERE s.businessId = :businessId
               AND s.status = 'COMPLETED'
+              AND (:scopedShopIds IS NULL OR s.shopId IN :scopedShopIds)
               AND (:shopId IS NULL OR s.shopId = :shopId)
               AND (:from IS NULL OR s.createdAt >= :from)
               AND (:to IS NULL OR s.createdAt <= :to)
@@ -53,6 +59,7 @@ public interface SalesReportRepository extends JpaRepository<Sale, Long> {
     BigDecimal sumCompletedItemsSold(
             @Param("businessId") Long businessId,
             @Param("shopId") Long shopId,
+            @Param("scopedShopIds") List<Long> scopedShopIds,
             @Param("from") Instant from,
             @Param("to") Instant to);
 }

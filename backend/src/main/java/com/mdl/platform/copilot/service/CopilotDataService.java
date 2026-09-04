@@ -282,8 +282,13 @@ public class CopilotDataService {
         Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant endOfDay = LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
 
+        List<Long> shopScope = scopedShopIds(context);
+        if (shopScope != null && shopScope.isEmpty()) {
+            return "Today's sales: 0 completed transaction(s).";
+        }
+
         long completed = salesReportRepository.countByStatus(
-                context.businessId(), "COMPLETED", null, startOfDay, endOfDay);
+                context.businessId(), "COMPLETED", null, shopScope, startOfDay, endOfDay);
 
         StringBuilder reply = new StringBuilder("Today's sales: ")
                 .append(completed)
@@ -294,7 +299,7 @@ public class CopilotDataService {
                     .orElseThrow(() -> new NotFoundException("Business not found"))
                     .getCurrencyCode();
             BigDecimal gross = salesReportRepository.sumTotalAmountByStatus(
-                    context.businessId(), "COMPLETED", null, startOfDay, endOfDay);
+                    context.businessId(), "COMPLETED", null, shopScope, startOfDay, endOfDay);
             reply.append(" Gross revenue: ")
                     .append(currency)
                     .append(" ")
@@ -315,7 +320,11 @@ public class CopilotDataService {
 
         Instant from = LocalDate.now(ZoneOffset.UTC).minusDays(30).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = Instant.now();
-        var rows = extendedReportRepository.salesByProduct(context.businessId(), null, from, to);
+        List<Long> shopScope = scopedShopIds(context);
+        if (shopScope != null && shopScope.isEmpty()) {
+            return "No completed sales in the last 30 days to rank products.";
+        }
+        var rows = extendedReportRepository.salesByProduct(context.businessId(), null, shopScope, from, to);
 
         if (rows.isEmpty()) {
             return "No completed sales in the last 30 days to rank products.";
@@ -496,8 +505,11 @@ public class CopilotDataService {
         if (hasPermission(context, "report:view")) {
             Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
             Instant endOfDay = LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-            long salesToday = salesReportRepository.countByStatus(
-                    context.businessId(), "COMPLETED", null, startOfDay, endOfDay);
+            List<Long> shopScope = scopedShopIds(context);
+            long salesToday = shopScope != null && shopScope.isEmpty()
+                    ? 0
+                    : salesReportRepository.countByStatus(
+                            context.businessId(), "COMPLETED", null, shopScope, startOfDay, endOfDay);
             parts.add(salesToday + " sale(s) completed today");
         }
 
@@ -540,6 +552,14 @@ public class CopilotDataService {
         return locationAccessService.getAccessibleLocations(context).stream()
                 .map(Location::getId)
                 .toList();
+    }
+
+    /** Null means all shops (owner / view-all); empty list means no shop access. */
+    private List<Long> scopedShopIds(UserContext context) {
+        if (locationAccessService.canViewAllLocations(context)) {
+            return null;
+        }
+        return locationAccessService.getAccessibleShopIds(context);
     }
 
     private Location findLocation(UserContext context, Long locationId) {

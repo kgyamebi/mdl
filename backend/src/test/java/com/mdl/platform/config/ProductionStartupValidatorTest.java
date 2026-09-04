@@ -17,6 +17,7 @@ class ProductionStartupValidatorTest {
     @BeforeEach
     void setUp() {
         validator = new ProductionStartupValidator();
+        ReflectionTestUtils.setField(validator, "dbPassword", "strong-db-password-for-production");
     }
 
     @Test
@@ -25,6 +26,7 @@ class ProductionStartupValidatorTest {
                 "prod-secret-with-enough-entropy-for-hs256-signing-key");
         ReflectionTestUtils.setField(validator, "ownerSeedEnabled", false);
         ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
+        ReflectionTestUtils.setField(validator, "ownerPassword", "");
 
         assertThatCode(validator::validateProductionConfiguration).doesNotThrowAnyException();
     }
@@ -64,10 +66,37 @@ class ProductionStartupValidatorTest {
     }
 
     @Test
+    void rejectsWeakDatabasePassword() {
+        ReflectionTestUtils.setField(validator, "jwtSecret",
+                "prod-secret-with-enough-entropy-for-hs256-signing-key");
+        ReflectionTestUtils.setField(validator, "dbPassword", "password");
+        ReflectionTestUtils.setField(validator, "ownerSeedEnabled", false);
+        ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
+
+        assertThatThrownBy(validator::validateProductionConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("DB_PASSWORD");
+    }
+
+    @Test
+    void rejectsDemoOwnerPassword() {
+        ReflectionTestUtils.setField(validator, "jwtSecret",
+                "prod-secret-with-enough-entropy-for-hs256-signing-key");
+        ReflectionTestUtils.setField(validator, "ownerSeedEnabled", true);
+        ReflectionTestUtils.setField(validator, "ownerPassword", "Owner@123!");
+        ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
+
+        assertThatThrownBy(validator::validateProductionConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("demo default");
+    }
+
+    @Test
     void allowsOwnerSeedForBootstrapInProduction() {
         ReflectionTestUtils.setField(validator, "jwtSecret",
                 "prod-secret-with-enough-entropy-for-hs256-signing-key");
         ReflectionTestUtils.setField(validator, "ownerSeedEnabled", true);
+        ReflectionTestUtils.setField(validator, "ownerPassword", "SecureOwnerPass123!");
         ReflectionTestUtils.setField(validator, "demoSeedEnabled", false);
 
         assertThatCode(validator::validateProductionConfiguration).doesNotThrowAnyException();

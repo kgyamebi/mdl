@@ -123,8 +123,9 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .path("data").path("refreshToken").asText();
+        var data = objectMapper.readTree(loginResult.getResponse().getContentAsString()).path("data");
+        String accessToken = data.path("accessToken").asText();
+        String refreshToken = data.path("refreshToken").asText();
 
         mockMvc.perform(post("/api/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -134,6 +135,10 @@ class AuthIntegrationTest {
         mockMvc.perform(post("/api/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refreshToken\":\"" + refreshToken + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isUnauthorized());
     }
 }

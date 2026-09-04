@@ -16,9 +16,13 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final SessionValidationService sessionValidationService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService,
+            SessionValidationService sessionValidationService) {
         this.jwtService = jwtService;
+        this.sessionValidationService = sessionValidationService;
     }
 
     @Override
@@ -39,6 +43,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             var claims = jwtService.parseClaims(token);
             UserContext userContext = jwtService.toUserContext(claims);
+
+            if (!sessionValidationService.isAccessAllowed(userContext.sessionId(), userContext.userId())) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             AuthenticatedUser authenticatedUser = UserContextMapper.toAuthenticatedUser(userContext);
 
             var authentication = new UsernamePasswordAuthenticationToken(

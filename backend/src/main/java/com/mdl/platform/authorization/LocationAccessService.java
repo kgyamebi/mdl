@@ -113,6 +113,37 @@ public class LocationAccessService {
         requireAccessibleLocation(context, locationId);
     }
 
+    public Shop requireAccessibleShop(UserContext context, Long shopId) {
+        Shop shop = shopRepository.findByIdAndBusinessId(shopId, context.businessId())
+                .orElseThrow(() -> new NotFoundException("Shop not found"));
+
+        if (!isOwner(context) && !canAccessLocation(context, shop.getLocationId())) {
+            throw new ForbiddenException("You do not have access to this shop");
+        }
+
+        return shop;
+    }
+
+    public List<Long> getAccessibleShopIds(UserContext context) {
+        if (canViewAllLocations(context)) {
+            return shopRepository.findByBusinessIdAndStatusOrderByNameAsc(context.businessId(), "ACTIVE").stream()
+                    .map(Shop::getId)
+                    .toList();
+        }
+
+        List<Long> locationIds = getAccessibleLocations(context).stream()
+                .map(Location::getId)
+                .toList();
+        if (locationIds.isEmpty()) {
+            return List.of();
+        }
+
+        return shopRepository.findByBusinessIdAndLocationIdInAndStatus(
+                        context.businessId(), locationIds, "ACTIVE").stream()
+                .map(Shop::getId)
+                .toList();
+    }
+
     /**
      * Operational stock recording at any active shop/warehouse in the business.
      */

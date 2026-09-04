@@ -61,32 +61,37 @@ public class ReportService {
     public SalesSummaryReport salesSummary(Long shopId, Instant from, Instant to) {
         authorizationService.requirePermission("report:view");
         UserContext context = authorizationService.requireAuthenticated();
+        ShopReportScope scope = resolveShopScope(context, shopId);
 
         String currencyCode = businessRepository.findByIdWithCurrency(context.businessId())
                 .orElseThrow(() -> new NotFoundException("Business not found"))
                 .getCurrencyCode();
 
+        if (scope.noAccessibleShops()) {
+            return emptySalesSummary(currencyCode, from, to, scope.reportShopId());
+        }
+
         long completed = salesReportRepository.countByStatus(
-                context.businessId(), "COMPLETED", shopId, from, to);
+                context.businessId(), "COMPLETED", scope.reportShopId(), scope.scopedShopIds(), from, to);
         long cancelled = salesReportRepository.countByStatus(
-                context.businessId(), "CANCELLED", shopId, from, to);
+                context.businessId(), "CANCELLED", scope.reportShopId(), scope.scopedShopIds(), from, to);
         long refunded = salesReportRepository.countByStatus(
-                context.businessId(), "REFUNDED", shopId, from, to);
+                context.businessId(), "REFUNDED", scope.reportShopId(), scope.scopedShopIds(), from, to);
 
         BigDecimal gross = salesReportRepository.sumTotalAmountByStatus(
-                context.businessId(), "COMPLETED", shopId, from, to);
+                context.businessId(), "COMPLETED", scope.reportShopId(), scope.scopedShopIds(), from, to);
         BigDecimal cancelledAmount = salesReportRepository.sumTotalAmountByStatus(
-                context.businessId(), "CANCELLED", shopId, from, to);
+                context.businessId(), "CANCELLED", scope.reportShopId(), scope.scopedShopIds(), from, to);
         BigDecimal refundedAmount = salesReportRepository.sumTotalAmountByStatus(
-                context.businessId(), "REFUNDED", shopId, from, to);
+                context.businessId(), "REFUNDED", scope.reportShopId(), scope.scopedShopIds(), from, to);
         BigDecimal itemsSold = salesReportRepository.sumCompletedItemsSold(
-                context.businessId(), shopId, from, to);
+                context.businessId(), scope.reportShopId(), scope.scopedShopIds(), from, to);
 
         return new SalesSummaryReport(
                 currencyCode,
                 from,
                 to,
-                shopId,
+                scope.reportShopId(),
                 completed,
                 cancelled,
                 refunded,
@@ -100,6 +105,7 @@ public class ReportService {
     public BusinessOverviewReport businessOverview() {
         authorizationService.requirePermission("report:view");
         UserContext context = authorizationService.requireAuthenticated();
+        ShopReportScope scope = resolveShopScope(context, null);
 
         String currencyCode = businessRepository.findByIdWithCurrency(context.businessId())
                 .orElseThrow(() -> new NotFoundException("Business not found"))
@@ -108,10 +114,14 @@ public class ReportService {
         Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant endOfDay = LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC).minusMillis(1);
 
-        long salesToday = salesReportRepository.countByStatus(
-                context.businessId(), "COMPLETED", null, startOfDay, endOfDay);
-        BigDecimal salesAmountToday = salesReportRepository.sumTotalAmountByStatus(
-                context.businessId(), "COMPLETED", null, startOfDay, endOfDay);
+        long salesToday = scope.noAccessibleShops()
+                ? 0
+                : salesReportRepository.countByStatus(
+                        context.businessId(), "COMPLETED", scope.reportShopId(), scope.scopedShopIds(), startOfDay, endOfDay);
+        BigDecimal salesAmountToday = scope.noAccessibleShops()
+                ? BigDecimal.ZERO
+                : salesReportRepository.sumTotalAmountByStatus(
+                        context.businessId(), "COMPLETED", scope.reportShopId(), scope.scopedShopIds(), startOfDay, endOfDay);
 
         List<Long> locationIds = locationAccessService.getAccessibleLocations(context).stream()
                 .map(Location::getId)
@@ -145,13 +155,18 @@ public class ReportService {
     public SalesByProductReport salesByProduct(Long shopId, Instant from, Instant to) {
         authorizationService.requirePermission("report:view");
         UserContext context = authorizationService.requireAuthenticated();
+        ShopReportScope scope = resolveShopScope(context, shopId);
 
         String currencyCode = businessRepository.findByIdWithCurrency(context.businessId())
                 .orElseThrow(() -> new NotFoundException("Business not found"))
                 .getCurrencyCode();
 
+        if (scope.noAccessibleShops()) {
+            return new SalesByProductReport(currencyCode, from, to, scope.reportShopId(), List.of());
+        }
+
         List<SalesByProductReport.SalesByProductRow> items = extendedReportRepository
-                .salesByProduct(context.businessId(), shopId, from, to)
+                .salesByProduct(context.businessId(), scope.reportShopId(), scope.scopedShopIds(), from, to)
                 .stream()
                 .map(row -> new SalesByProductReport.SalesByProductRow(
                         (Long) row[0],
@@ -161,7 +176,7 @@ public class ReportService {
                         (BigDecimal) row[4]))
                 .toList();
 
-        return new SalesByProductReport(currencyCode, from, to, shopId, items);
+        return new SalesByProductReport(currencyCode, from, to, scope.reportShopId(), items);
     }
 
     public InventoryValuationReport inventoryValuation(Long locationId) {
@@ -238,6 +253,40 @@ public class ReportService {
         return new TransferActivityReport(from, to, total, statusCounts);
     }
 
+    private ShopReportScope resolveShopScope(UserContext context, Long requestedShopId) {
+        if (requestedShopId != null) {
+            locationAccessService.requireAccessibleShop(context, requestedShopId);
+            return new ShopReportScope(requestedShopId, null);
+        }
+
+        if (locationAccessService.canViewAllLocations(context)) {
+            return new ShopReportScope(null, null);
+        }
+
+        List<Long> shopIds = locationAccessService.getAccessibleShopIds(context);
+        return new ShopReportScope(null, shopIds);
+    }
+
+    private SalesSummaryReport emptySalesSummary(
+            String currencyCode,
+            Instant from,
+            Instant to,
+            Long shopId) {
+        return new SalesSummaryReport(
+                currencyCode,
+                from,
+                to,
+                shopId,
+                0,
+                0,
+                0,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO);
+    }
+
     private InventoryValuationReport emptyValuation(String currencyCode) {
         return new InventoryValuationReport(
                 currencyCode,
@@ -245,5 +294,11 @@ public class ReportService {
                 BigDecimal.ZERO,
                 0,
                 List.of());
+    }
+
+    private record ShopReportScope(Long reportShopId, List<Long> scopedShopIds) {
+        boolean noAccessibleShops() {
+            return scopedShopIds != null && scopedShopIds.isEmpty();
+        }
     }
 }

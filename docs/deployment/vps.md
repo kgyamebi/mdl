@@ -108,7 +108,58 @@ docker compose -f docker-compose.prod.yml up -d
 
 ---
 
-## 6. Updates and redeploys
+## 6. Database backups
+
+Daily automated backups use the scripts in `scripts/backup/`:
+
+```bash
+chmod +x scripts/backup/*.sh scripts/monitor/*.sh
+
+# Manual backup (creates ./backups/mariadb/mdl_platform-<timestamp>.sql.gz)
+./scripts/backup/mariadb-backup.sh
+
+# Restore (destructive — test on staging first)
+./scripts/backup/mariadb-restore.sh ./backups/mariadb/mdl_platform-20260101T120000Z.sql.gz
+```
+
+Schedule on the VPS with cron (example: daily at 02:15 UTC, keep 14 days):
+
+```bash
+crontab -e
+# add:
+15 2 * * * cd /path/to/mdl-platform && BACKUP_DIR=/var/backups/mdl ./scripts/backup/mariadb-backup.sh >> /var/log/mdl-backup.log 2>&1
+```
+
+**Test a restore** on a staging copy before relying on backups in production.
+
+---
+
+## 7. Monitoring
+
+Basic uptime and disk checks live in `scripts/monitor/`:
+
+```bash
+# Health (via Caddy/nginx — use your public URL once live)
+HEALTH_URL=https://your-domain.example/api/health ./scripts/monitor/health-check.sh
+
+# Disk space (warn at 85%, critical at 92%)
+./scripts/monitor/disk-space-check.sh
+```
+
+Optional: set `ALERT_WEBHOOK_URL` to a Slack/Discord incoming webhook for alerts.
+
+Example cron (every 5 minutes):
+
+```bash
+*/5 * * * * HEALTH_URL=https://your-domain.example/api/health /path/to/mdl-platform/scripts/monitor/health-check.sh >> /var/log/mdl-health.log 2>&1
+0 * * * * /path/to/mdl-platform/scripts/monitor/disk-space-check.sh >> /var/log/mdl-disk.log 2>&1
+```
+
+Prometheus metrics (`/actuator/prometheus`) are **not** exposed publicly — only authenticated backend access.
+
+---
+
+## 8. Updates and redeploys
 
 Pull latest code and rebuild:
 

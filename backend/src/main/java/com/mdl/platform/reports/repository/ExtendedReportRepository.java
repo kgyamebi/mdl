@@ -19,6 +19,7 @@ public interface ExtendedReportRepository extends JpaRepository<Sale, Long> {
             JOIN Product p ON p.id = si.productId
             WHERE s.businessId = :businessId
               AND s.status = 'COMPLETED'
+              AND (:scopedShopIds IS NULL OR s.shopId IN :scopedShopIds)
               AND (:shopId IS NULL OR s.shopId = :shopId)
               AND (:from IS NULL OR s.createdAt >= :from)
               AND (:to IS NULL OR s.createdAt <= :to)
@@ -28,6 +29,7 @@ public interface ExtendedReportRepository extends JpaRepository<Sale, Long> {
     List<Object[]> salesByProduct(
             @Param("businessId") Long businessId,
             @Param("shopId") Long shopId,
+            @Param("scopedShopIds") List<Long> scopedShopIds,
             @Param("from") Instant from,
             @Param("to") Instant to);
 
