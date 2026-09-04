@@ -4,10 +4,12 @@ import com.mdl.platform.common.dto.ApiResponse;
 import com.mdl.platform.locations.dto.CreateTransferRouteRequest;
 import com.mdl.platform.locations.dto.TransferRouteResponse;
 import com.mdl.platform.locations.dto.UpdateTransferRouteRequest;
+import com.mdl.platform.locations.service.LocationManagementService;
 import com.mdl.platform.locations.service.LocationQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +25,13 @@ import java.util.List;
 public class TransferRouteController {
 
     private final LocationQueryService locationQueryService;
+    private final LocationManagementService locationManagementService;
 
-    public TransferRouteController(LocationQueryService locationQueryService) {
+    public TransferRouteController(
+            LocationQueryService locationQueryService,
+            LocationManagementService locationManagementService) {
         this.locationQueryService = locationQueryService;
+        this.locationManagementService = locationManagementService;
     }
 
     @GetMapping
@@ -46,5 +52,11 @@ public class TransferRouteController {
             @Valid @RequestBody UpdateTransferRouteRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Transfer route updated",
                 locationQueryService.updateTransferRoute(id, request)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteRoute(@PathVariable Long id) {
+        locationManagementService.deleteTransferRoute(id);
+        return ResponseEntity.ok(ApiResponse.ok("Transfer route deleted", null));
     }
 }

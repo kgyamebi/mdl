@@ -10,6 +10,7 @@ import com.mdl.platform.inventory.dto.CreateReservationRequest;
 import com.mdl.platform.inventory.dto.InventoryBalanceResponse;
 import com.mdl.platform.inventory.dto.InventorySummaryResponse;
 import com.mdl.platform.inventory.dto.InventoryTransactionResponse;
+import com.mdl.platform.inventory.dto.RecordWarehouseStockRequest;
 import com.mdl.platform.inventory.dto.ReservationResponse;
 import com.mdl.platform.inventory.dto.ReviewAdjustmentRequestRequest;
 import com.mdl.platform.inventory.dto.CancelStocktakeRequest;
@@ -93,6 +94,13 @@ public class InventoryController {
             @Valid @RequestBody CreateInventoryAdjustmentRequest request) {
         InventoryTransactionResponse created = ledgerService.postAdjustment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Adjustment posted", created));
+    }
+
+    @PostMapping("/warehouse-stock")
+    public ResponseEntity<ApiResponse<InventoryTransactionResponse>> recordWarehouseStock(
+            @Valid @RequestBody RecordWarehouseStockRequest request) {
+        InventoryTransactionResponse created = ledgerService.recordWarehouseStock(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("Stock updated", created));
     }
 
     @PostMapping("/damage-reports")

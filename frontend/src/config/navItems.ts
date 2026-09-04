@@ -114,8 +114,8 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     to: '/copilot',
-    label: 'Copilot',
-    shortLabel: 'Copilot',
+    label: 'MDL AI Assistant',
+    shortLabel: 'AI',
     icon: '💬',
     group: 'management',
     permissions: ['copilot:use'],

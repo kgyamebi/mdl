@@ -13,4 +13,6 @@ public interface LocationRepository extends JpaRepository<Location, Long> {
     Optional<Location> findByIdAndBusinessId(Long id, Long businessId);
 
     List<Location> findByBusinessIdAndIdInAndStatus(Long businessId, List<Long> ids, String status);
+
+    boolean existsByBusinessIdAndCode(Long businessId, String code);
 }

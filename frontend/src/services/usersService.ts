@@ -1,5 +1,5 @@
 import { apiRequest } from './apiClient';
-import type { ManagedUser, PageResponse, RoleOption } from '../types/api';
+import type { CreatedUser, ManagedUser, PageResponse, RoleOption } from '../types/api';
 
 export function fetchUsers(search = '', page = 0, size = 20): Promise<PageResponse<ManagedUser>> {
   const query = new URLSearchParams({ page: String(page), size: String(size) });
@@ -18,9 +18,9 @@ export function fetchRoles(): Promise<RoleOption[]> {
 }
 
 export interface CreateUserPayload {
-  email: string;
-  username: string;
-  password: string;
+  email?: string;
+  username?: string;
+  password?: string;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -28,8 +28,8 @@ export interface CreateUserPayload {
   locationIds?: number[];
 }
 
-export function createUser(payload: CreateUserPayload): Promise<ManagedUser> {
-  return apiRequest<ManagedUser>('/api/users', { method: 'POST', body: payload });
+export function createUser(payload: CreateUserPayload): Promise<CreatedUser> {
+  return apiRequest<CreatedUser>('/api/users', { method: 'POST', body: payload });
 }
 
 export function updateUser(

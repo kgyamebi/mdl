@@ -38,4 +38,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
               AND w.status = 'ACTIVE'
             """)
     boolean isRestrictedLocation(@Param("businessId") Long businessId, @Param("locationId") Long locationId);
+
+    boolean existsByBusinessIdAndCode(Long businessId, String code);
 }

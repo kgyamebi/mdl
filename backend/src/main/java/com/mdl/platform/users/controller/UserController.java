@@ -5,6 +5,7 @@ import com.mdl.platform.common.dto.PageResponse;
 import com.mdl.platform.users.dto.AssignLocationsRequest;
 import com.mdl.platform.users.dto.AssignRolesRequest;
 import com.mdl.platform.users.dto.CreateUserRequest;
+import com.mdl.platform.users.dto.CreateUserResponse;
 import com.mdl.platform.users.dto.UpdateUserRequest;
 import com.mdl.platform.users.dto.UpdateUserStatusRequest;
 import com.mdl.platform.users.dto.UserResponse;
@@ -45,8 +46,8 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
-        UserResponse created = userManagementService.createUser(request);
+    public ResponseEntity<ApiResponse<CreateUserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
+        CreateUserResponse created = userManagementService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok("User created", created));
     }
 

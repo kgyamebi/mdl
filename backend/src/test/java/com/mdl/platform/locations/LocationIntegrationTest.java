@@ -21,6 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -103,6 +104,37 @@ class LocationIntegrationTest {
         mockMvc.perform(get("/api/warehouses/" + mainWarehouseId)
                         .header("Authorization", "Bearer " + workerToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ownerCanCreateAndDeactivateShop() throws Exception {
+        MvcResult createResult = mockMvc.perform(post("/api/shops")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Test Shop East\",\"code\":\"SHOP-TEST-E\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.code").value("SHOP-TEST-E"))
+                .andExpect(jsonPath("$.data.name").value("Test Shop East"))
+                .andReturn();
+
+        long shopId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(delete("/api/shops/" + shopId)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+    }
+
+    @Test
+    void ownerCanCreateMainWarehouse() throws Exception {
+        mockMvc.perform(post("/api/warehouses")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Regional Hub\",\"code\":\"WH-REG-HUB\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.code").value("WH-REG-HUB"))
+                .andExpect(jsonPath("$.data.warehouseType").value("MAIN"));
     }
 
     @Test

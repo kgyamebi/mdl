@@ -9,7 +9,8 @@ import {
   updateUserRoles,
   updateUserStatus,
 } from '../../services/usersService';
-import type { ManagedUser, RoleOption } from '../../types/api';
+import type { CreatedUser, ManagedUser, RoleOption } from '../../types/api';
+import { formatRoleList, formatRoleName } from '../../utils/formatRoleName';
 
 export function UsersPage() {
   const { hasPermission } = useAuth();
@@ -25,10 +26,8 @@ export function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState<CreatedUser | null>(null);
   const [createForm, setCreateForm] = useState({
-    email: '',
-    username: '',
-    password: '',
     firstName: '',
     lastName: '',
     roleCodes: [] as string[],
@@ -69,9 +68,14 @@ export function UsersPage() {
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     try {
-      const created = await createUser(createForm);
+      const created = await createUser({
+        firstName: createForm.firstName.trim(),
+        lastName: createForm.lastName.trim(),
+        roleCodes: createForm.roleCodes.length > 0 ? createForm.roleCodes : undefined,
+      });
       setShowCreate(false);
-      setCreateForm({ email: '', username: '', password: '', firstName: '', lastName: '', roleCodes: [] });
+      setCreateForm({ firstName: '', lastName: '', roleCodes: [] });
+      setCreatedCredentials(created);
       setSelectedId(created.id);
       loadUsers();
     } catch (err) {
@@ -134,7 +138,14 @@ export function UsersPage() {
         </div>
         {canManage && (
           <div className="page__header-actions">
-            <button type="button" className="btn btn--primary" onClick={() => setShowCreate((v) => !v)}>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => {
+                setShowCreate((v) => !v);
+                setCreatedCredentials(null);
+              }}
+            >
               {showCreate ? 'Cancel' : 'New user'}
             </button>
           </div>
@@ -151,15 +162,58 @@ export function UsersPage() {
         />
       </div>
 
+      {createdCredentials && (
+        <section className="panel panel--success">
+          <h2>User created</h2>
+          <p className="muted">Share these login details with the new team member.</p>
+          <dl className="detail-list">
+            <div><dt>Name</dt><dd>{createdCredentials.fullName}</dd></div>
+            <div><dt>Email</dt><dd>{createdCredentials.email}</dd></div>
+            <div><dt>Username</dt><dd>{createdCredentials.username}</dd></div>
+            {createdCredentials.generatedPassword && (
+              <div><dt>Password</dt><dd><code>{createdCredentials.generatedPassword}</code></dd></div>
+            )}
+          </dl>
+          <button type="button" className="btn btn--ghost" onClick={() => setCreatedCredentials(null)}>
+            Dismiss
+          </button>
+        </section>
+      )}
+
       {showCreate && canManage && (
         <section className="panel">
           <h2>Create user</h2>
+          <p className="muted">Enter the person&apos;s name. Email, username, and password are generated automatically.</p>
           <form className="form form--touch-friendly" onSubmit={handleCreate}>
-            <label className="form__field"><span>Email</span><input className="input" type="email" required value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} /></label>
-            <label className="form__field"><span>Username</span><input className="input" required value={createForm.username} onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })} /></label>
-            <label className="form__field"><span>Password</span><input className="input" type="password" required minLength={8} value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} /></label>
-            <label className="form__field"><span>First name</span><input className="input" required value={createForm.firstName} onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })} /></label>
-            <label className="form__field"><span>Last name</span><input className="input" required value={createForm.lastName} onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })} /></label>
+            <label className="form__field">
+              <span>First name</span>
+              <input className="input" required value={createForm.firstName} onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })} />
+            </label>
+            <label className="form__field">
+              <span>Last name</span>
+              <input className="input" required value={createForm.lastName} onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })} />
+            </label>
+            <div className="form__field form__field--wide">
+              <span>Roles</span>
+              <div className="role-grid">
+                {roles.filter((r) => r.code !== 'OWNER').map((role) => (
+                  <label key={role.code} className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={createForm.roleCodes.includes(role.code)}
+                      onChange={() => {
+                        const next = createForm.roleCodes.includes(role.code)
+                          ? createForm.roleCodes.filter((c) => c !== role.code)
+                          : [...createForm.roleCodes, role.code];
+                        setCreateForm({ ...createForm, roleCodes: next });
+                      }}
+                    />
+                    {formatRoleName(role.code)}
+                  </label>
+                ))}
+              </div>
+              <p className="muted">Defaults to Shop worker if none selected.</p>
+            </div>
             <div className="form__field form__field--wide">
               <button type="submit" className="btn btn--primary">Create user</button>
             </div>
@@ -182,7 +236,7 @@ export function UsersPage() {
                       <td><strong>{user.fullName}</strong></td>
                       <td>{user.email}</td>
                       <td>{user.status}</td>
-                      <td>{user.roles.join(', ')}</td>
+                      <td>{formatRoleList(user.roles)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -207,12 +261,14 @@ export function UsersPage() {
                   <label className="form__field"><span>Last name</span><input className="input" value={selectedUser.lastName} onChange={(e) => setSelectedUser({ ...selectedUser, lastName: e.target.value })} /></label>
                   <button type="button" className="btn btn--ghost" onClick={saveUserDetails}>Save details</button>
                   <h3 className="panel__subheading">Roles</h3>
-                  {roles.map((role) => (
-                    <label key={role.code} className="checkbox">
-                      <input type="checkbox" checked={selectedUser.roles.includes(role.code)} onChange={() => toggleRole(role.code)} />
-                      {role.name}
-                    </label>
-                  ))}
+                  <div className="role-grid">
+                    {roles.map((role) => (
+                      <label key={role.code} className="checkbox">
+                        <input type="checkbox" checked={selectedUser.roles.includes(role.code)} onChange={() => toggleRole(role.code)} />
+                        {formatRoleName(role.code)}
+                      </label>
+                    ))}
+                  </div>
                   <h3 className="panel__subheading">Status</h3>
                   <div className="page__header-actions">
                     {selectedUser.status !== 'ACTIVE' && <button type="button" className="btn btn--ghost" onClick={() => setStatus('ACTIVE')}>Activate</button>}

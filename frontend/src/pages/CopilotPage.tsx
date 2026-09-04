@@ -88,7 +88,7 @@ export function CopilotPage() {
           },
         ]);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Copilot request failed');
+        setError(err instanceof Error ? err.message : 'MDL AI Assistant request failed');
       } finally {
         setLoading(false);
       }
@@ -114,7 +114,7 @@ export function CopilotPage() {
         <header className="page__header">
           <div>
             <p className="eyebrow">Assistant</p>
-            <h1>MDL Copilot</h1>
+            <h1>MDL AI Assistant</h1>
           </div>
         </header>
         <section className="panel">
@@ -129,8 +129,8 @@ export function CopilotPage() {
       <header className="page__header">
         <div>
           <p className="eyebrow">Assistant</p>
-          <h1>MDL Copilot</h1>
-          <p className="subtitle">Inventory and business answers scoped to your role</p>
+          <h1>MDL AI Assistant</h1>
+          <p className="subtitle">Need help? Ask MDL AI Assistant 💬 — answers scoped to your role</p>
         </div>
         <div className="page__header-actions copilot-page__header-actions">
           <button type="button" className="btn btn--ghost" onClick={startNewChat} disabled={loading}>
@@ -205,7 +205,7 @@ export function CopilotPage() {
               className={`copilot-message copilot-message--${message.role.toLowerCase()}`}
             >
               <span className="copilot-message__role">
-                {message.role === 'USER' ? 'You' : 'Copilot'}
+                {message.role === 'USER' ? 'You' : 'MDL AI Assistant'}
               </span>
               <p>{message.content}</p>
             </div>
@@ -213,7 +213,7 @@ export function CopilotPage() {
 
           {loading && (
             <div className="copilot-message copilot-message--assistant">
-              <span className="copilot-message__role">Copilot</span>
+              <span className="copilot-message__role">MDL AI Assistant</span>
               <p className="muted">Thinking…</p>
             </div>
           )}

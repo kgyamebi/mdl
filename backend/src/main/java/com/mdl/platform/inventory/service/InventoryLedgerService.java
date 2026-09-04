@@ -7,6 +7,7 @@ import com.mdl.platform.common.exception.NotFoundException;
 import com.mdl.platform.inventory.dto.CreateDamageReportRequest;
 import com.mdl.platform.inventory.dto.CreateInventoryAdjustmentRequest;
 import com.mdl.platform.inventory.dto.InventoryTransactionResponse;
+import com.mdl.platform.inventory.dto.RecordWarehouseStockRequest;
 import com.mdl.platform.inventory.entity.InventoryBalance;
 import com.mdl.platform.inventory.entity.InventoryTransaction;
 import com.mdl.platform.inventory.repository.InventoryBalanceRepository;
@@ -74,6 +75,31 @@ public class InventoryLedgerService {
                 "ADJUSTMENT",
                 null,
                 trimToNull(request.notes()));
+
+        return toResponse(result.transaction(), location, product);
+    }
+
+    @Transactional
+    public InventoryTransactionResponse recordWarehouseStock(RecordWarehouseStockRequest request) {
+        authorizationService.requirePermission("inventory:record:warehouse");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        if (request.quantityChange().compareTo(BigDecimal.ZERO) == 0) {
+            throw new ConflictException("Quantity change cannot be zero");
+        }
+
+        Location location = locationAccessService.requireBusinessStockLocation(context, request.locationId());
+        Product product = requireTrackableProduct(context.businessId(), request.productId());
+
+        LedgerMovementResult result = applyOnHandChange(
+                context,
+                location,
+                product,
+                request.quantityChange(),
+                "ADJUSTMENT",
+                "WAREHOUSE_STOCK",
+                null,
+                trimToNull(request.reason()));
 
         return toResponse(result.transaction(), location, product);
     }

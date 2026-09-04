@@ -13,4 +13,6 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findByIdAndBusinessId(Long id, Long businessId);
 
     List<Shop> findByBusinessIdAndLocationIdInAndStatus(Long businessId, List<Long> locationIds, String status);
+
+    boolean existsByBusinessIdAndCode(Long businessId, String code);
 }

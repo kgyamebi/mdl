@@ -3,8 +3,11 @@ import { useAuth } from '../auth/AuthContext';
 import { fetchLocations, fetchShops } from '../services/locationsService';
 import {
   exportInventoryBalancesCsv,
+  exportInventoryBalancesPdf,
   exportLowStockCsv,
+  exportLowStockPdf,
   exportSalesSummaryCsv,
+  exportSalesSummaryPdf,
   fetchReportExports,
 } from '../services/reportsService';
 import type { LocationSummary, ReportExport, Shop } from '../types/api';
@@ -117,50 +120,65 @@ export function ReportsPage() {
     }
   }, [canExport, loadHistory]);
 
-  async function runExport(key: string, action: () => Promise<void>, label: string) {
-    setExporting(key);
+  async function runExport(
+    key: string,
+    action: () => Promise<void>,
+    label: string,
+    format: 'CSV' | 'PDF',
+  ) {
+    setExporting(`${key}-${format}`);
     setError(null);
     setSuccess(null);
 
     try {
       await action();
-      setSuccess(`${label} downloaded.`);
+      setSuccess(`${label} ${format} downloaded.`);
       await loadHistory();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to export ${label.toLowerCase()}`);
+      setError(err instanceof Error ? err.message : `Failed to export ${label.toLowerCase()} ${format}`);
     } finally {
       setExporting(null);
     }
   }
 
-  function handleSalesExport(event: FormEvent) {
+  function handleSalesExport(event: FormEvent, format: 'CSV' | 'PDF') {
     event.preventDefault();
-    runExport('sales', () =>
-      exportSalesSummaryCsv({
-        shopId: salesShopId ? Number(salesShopId) : undefined,
-        from: salesFrom || undefined,
-        to: salesTo || undefined,
-      }),
-    'Sales summary');
+    const payload = {
+      shopId: salesShopId ? Number(salesShopId) : undefined,
+      from: salesFrom || undefined,
+      to: salesTo || undefined,
+    };
+    runExport(
+      'sales',
+      () => (format === 'CSV' ? exportSalesSummaryCsv(payload) : exportSalesSummaryPdf(payload)),
+      'Sales summary',
+      format,
+    );
   }
 
-  function handleInventoryExport(event: FormEvent) {
+  function handleInventoryExport(event: FormEvent, format: 'CSV' | 'PDF') {
     event.preventDefault();
-    runExport('inventory', () =>
-      exportInventoryBalancesCsv({
-        locationId: inventoryLocationId ? Number(inventoryLocationId) : undefined,
-        lowStockOnly: inventoryLowStockOnly,
-      }),
-    'Inventory balances');
+    const payload = {
+      locationId: inventoryLocationId ? Number(inventoryLocationId) : undefined,
+      lowStockOnly: inventoryLowStockOnly,
+    };
+    runExport(
+      'inventory',
+      () => (format === 'CSV' ? exportInventoryBalancesCsv(payload) : exportInventoryBalancesPdf(payload)),
+      'Inventory balances',
+      format,
+    );
   }
 
-  function handleLowStockExport(event: FormEvent) {
+  function handleLowStockExport(event: FormEvent, format: 'CSV' | 'PDF') {
     event.preventDefault();
-    runExport('low-stock', () =>
-      exportLowStockCsv({
-        locationId: lowStockLocationId ? Number(lowStockLocationId) : undefined,
-      }),
-    'Low stock');
+    const payload = { locationId: lowStockLocationId ? Number(lowStockLocationId) : undefined };
+    runExport(
+      'low-stock',
+      () => (format === 'CSV' ? exportLowStockCsv(payload) : exportLowStockPdf(payload)),
+      'Low stock',
+      format,
+    );
   }
 
   if (!canExport) {
@@ -185,7 +203,7 @@ export function ReportsPage() {
         <div>
           <p className="eyebrow">Reports</p>
           <h1>Export downloads</h1>
-          <p className="subtitle">CSV exports are logged for audit</p>
+          <p className="subtitle">Download CSV or branded PDF reports</p>
         </div>
         <div className="page__header-actions">
           <button type="button" className="btn btn--ghost" onClick={loadHistory} disabled={loading}>
@@ -201,7 +219,7 @@ export function ReportsPage() {
         <section className="panel report-panel">
           <h2>Sales summary</h2>
           <p className="muted">Metric/value pairs for sales totals in a date range.</p>
-          <form className="report-form form--touch-friendly" onSubmit={handleSalesExport}>
+          <form className="report-form form--touch-friendly" onSubmit={(e) => handleSalesExport(e, 'CSV')}>
             <label className="form__field">
               <span>Shop</span>
               <select
@@ -235,16 +253,26 @@ export function ReportsPage() {
                 onChange={(event) => setSalesTo(event.target.value)}
               />
             </label>
-            <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
-              {exporting === 'sales' ? 'Exporting…' : 'Download CSV'}
-            </button>
+            <div className="report-actions">
+              <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
+                {exporting === 'sales-CSV' ? 'Exporting…' : 'Download CSV'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={exporting !== null}
+                onClick={(e) => handleSalesExport(e, 'PDF')}
+              >
+                {exporting === 'sales-PDF' ? 'Exporting…' : 'Download PDF'}
+              </button>
+            </div>
           </form>
         </section>
 
         <section className="panel report-panel">
           <h2>Inventory balances</h2>
           <p className="muted">On-hand, reserved, and available stock by location.</p>
-          <form className="report-form form--touch-friendly" onSubmit={handleInventoryExport}>
+          <form className="report-form form--touch-friendly" onSubmit={(e) => handleInventoryExport(e, 'CSV')}>
             <label className="form__field">
               <span>Location</span>
               <select
@@ -268,16 +296,26 @@ export function ReportsPage() {
               />
               Low stock only
             </label>
-            <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
-              {exporting === 'inventory' ? 'Exporting…' : 'Download CSV'}
-            </button>
+            <div className="report-actions">
+              <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
+                {exporting === 'inventory-CSV' ? 'Exporting…' : 'Download CSV'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={exporting !== null}
+                onClick={(e) => handleInventoryExport(e, 'PDF')}
+              >
+                {exporting === 'inventory-PDF' ? 'Exporting…' : 'Download PDF'}
+              </button>
+            </div>
           </form>
         </section>
 
         <section className="panel report-panel">
           <h2>Low stock</h2>
           <p className="muted">Items at or below reorder level.</p>
-          <form className="report-form form--touch-friendly" onSubmit={handleLowStockExport}>
+          <form className="report-form form--touch-friendly" onSubmit={(e) => handleLowStockExport(e, 'CSV')}>
             <label className="form__field">
               <span>Location</span>
               <select
@@ -293,9 +331,19 @@ export function ReportsPage() {
                 ))}
               </select>
             </label>
-            <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
-              {exporting === 'low-stock' ? 'Exporting…' : 'Download CSV'}
-            </button>
+            <div className="report-actions">
+              <button type="submit" className="btn btn--primary" disabled={exporting !== null}>
+                {exporting === 'low-stock-CSV' ? 'Exporting…' : 'Download CSV'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={exporting !== null}
+                onClick={(e) => handleLowStockExport(e, 'PDF')}
+              >
+                {exporting === 'low-stock-PDF' ? 'Exporting…' : 'Download PDF'}
+              </button>
+            </div>
           </form>
         </section>
       </div>

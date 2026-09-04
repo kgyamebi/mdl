@@ -480,6 +480,10 @@ export interface ManagedUser {
   createdAt: string;
 }
 
+export interface CreatedUser extends ManagedUser {
+  generatedPassword?: string | null;
+}
+
 export interface UserLocationAssignment {
   locationId: number;
   locationCode: string;

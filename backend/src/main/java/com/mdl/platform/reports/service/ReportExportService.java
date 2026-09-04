@@ -57,6 +57,8 @@ public class ReportExportService {
     private final AuditRecorder auditRecorder;
     private final ObjectMapper objectMapper;
 
+    private final ReportPdfGenerator reportPdfGenerator;
+
     public ReportExportService(
             AuthorizationService authorizationService,
             LocationAccessService locationAccessService,
@@ -67,7 +69,8 @@ public class ReportExportService {
             ProductRepository productRepository,
             ReportExportRepository exportRepository,
             AuditRecorder auditRecorder,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ReportPdfGenerator reportPdfGenerator) {
         this.authorizationService = authorizationService;
         this.locationAccessService = locationAccessService;
         this.businessRepository = businessRepository;
@@ -78,6 +81,7 @@ public class ReportExportService {
         this.exportRepository = exportRepository;
         this.auditRecorder = auditRecorder;
         this.objectMapper = objectMapper;
+        this.reportPdfGenerator = reportPdfGenerator;
     }
 
     @Transactional
@@ -190,6 +194,123 @@ public class ReportExportService {
                 parameters);
     }
 
+    @Transactional
+    public CsvExportResult exportSalesSummaryPdf(Long shopId, Instant from, Instant to) {
+        authorizationService.requirePermission("report:export");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        SalesSummaryReport report = reportService.salesSummary(shopId, from, to);
+        var business = businessRepository.findById(context.businessId()).orElseThrow();
+        Map<String, String> metrics = new LinkedHashMap<>();
+        metrics.put("currency_code", report.currencyCode());
+        metrics.put("from", formatValue(report.from()));
+        metrics.put("to", formatValue(report.to()));
+        metrics.put("shop_id", formatValue(report.shopId()));
+        metrics.put("completed_sales_count", formatValue(report.completedSalesCount()));
+        metrics.put("cancelled_sales_count", formatValue(report.cancelledSalesCount()));
+        metrics.put("refunded_sales_count", formatValue(report.refundedSalesCount()));
+        metrics.put("gross_sales_amount", formatValue(report.grossSalesAmount()));
+        metrics.put("cancelled_sales_amount", formatValue(report.cancelledSalesAmount()));
+        metrics.put("refunded_sales_amount", formatValue(report.refundedSalesAmount()));
+        metrics.put("net_sales_amount", formatValue(report.netSalesAmount()));
+        metrics.put("items_sold", formatValue(report.itemsSold()));
+
+        byte[] pdf = reportPdfGenerator.salesSummaryPdf(
+                business.getName(),
+                report.currencyCode(),
+                metrics,
+                Instant.now());
+
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("shopId", shopId);
+        parameters.put("from", from);
+        parameters.put("to", to);
+
+        return finishBinaryExport(
+                context,
+                "SALES_SUMMARY",
+                fileName("sales-summary", business.getCode(), "pdf"),
+                pdf,
+                "application/pdf",
+                metrics.size(),
+                parameters);
+    }
+
+    @Transactional
+    public CsvExportResult exportInventoryBalancesPdf(Long locationId, boolean lowStockOnly) {
+        authorizationService.requirePermission("report:export");
+        UserContext context = authorizationService.requireAuthenticated();
+
+        List<Long> locationIds = locationAccessService.getAccessibleLocations(context).stream()
+                .map(Location::getId)
+                .toList();
+        if (locationIds.isEmpty()) {
+            throw new NotFoundException("No accessible locations for export");
+        }
+        if (locationId != null && !locationIds.contains(locationId)) {
+            throw new NotFoundException("Location not accessible");
+        }
+
+        var business = businessRepository.findById(context.businessId()).orElseThrow();
+        Page<InventoryBalance> balances = balanceRepository.search(
+                context.businessId(),
+                locationIds,
+                locationId,
+                null,
+                null,
+                lowStockOnly,
+                PageRequest.of(0, MAX_INVENTORY_EXPORT_ROWS));
+
+        Map<Long, Location> locations = loadLocations(context.businessId(), balances.getContent());
+        Map<Long, Product> products = loadProducts(context.businessId(), balances.getContent());
+
+        List<List<String>> rows = balances.getContent().stream()
+                .map(balance -> {
+                    Location location = locations.get(balance.getLocationId());
+                    Product product = products.get(balance.getProductId());
+                    if (location == null || product == null) {
+                        return null;
+                    }
+                    BigDecimal available = balance.getQuantityOnHand().subtract(balance.getQuantityReserved());
+                    return List.of(
+                            location.getCode(),
+                            location.getName(),
+                            product.getSku(),
+                            product.getName(),
+                            product.getUnitOfMeasure(),
+                            balance.getQuantityOnHand().toPlainString(),
+                            balance.getQuantityReserved().toPlainString(),
+                            available.toPlainString(),
+                            product.getReorderLevel() != null ? String.valueOf(product.getReorderLevel()) : "");
+                })
+                .filter(row -> row != null)
+                .toList();
+
+        String title = lowStockOnly ? "Low Stock Report" : "Inventory Balances Report";
+        byte[] pdf = reportPdfGenerator.tabularPdf(
+                business.getName(),
+                title,
+                lowStockOnly ? "Items at or below reorder level" : "On-hand stock by location",
+                Instant.now(),
+                List.of("Location", "Location name", "SKU", "Product", "UoM", "On hand", "Reserved", "Available", "Reorder"),
+                rows);
+
+        String reportType = lowStockOnly ? "LOW_STOCK" : "INVENTORY_BALANCES";
+        String prefix = lowStockOnly ? "low-stock" : "inventory-balances";
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("locationId", locationId);
+        parameters.put("lowStockOnly", lowStockOnly);
+
+        return finishBinaryExport(
+                context,
+                reportType,
+                fileName(prefix, business.getCode(), "pdf"),
+                pdf,
+                "application/pdf",
+                rows.size(),
+                parameters);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<ReportExportResponse> listExports(String reportType, int page, int size) {
         authorizationService.requirePermission("report:export");
@@ -268,6 +389,38 @@ public class ReportExportService {
         return new CsvExportResult(bytes, fileName, "text/csv; charset=UTF-8", rowCount, export.getId());
     }
 
+    private CsvExportResult finishBinaryExport(
+            UserContext context,
+            String reportType,
+            String fileName,
+            byte[] content,
+            String contentType,
+            int rowCount,
+            Map<String, Object> parameters) {
+
+        ReportExport export = new ReportExport();
+        export.setBusinessId(context.businessId());
+        export.setUserId(context.userId());
+        export.setReportType(reportType);
+        export.setExportFormat(fileName.endsWith(".pdf") ? "PDF" : "CSV");
+        export.setFileName(fileName);
+        export.setRowCount(rowCount);
+        export.setParameters(serializeParameters(parameters));
+        export.setStatus("COMPLETED");
+        exportRepository.save(export);
+
+        auditRecorder.record(context, new AuditService.AuditEvent(
+                "REPORT_EXPORTED",
+                "REPORTS",
+                "REPORT_EXPORT",
+                export.getId(),
+                fileName,
+                "Exported " + reportType + " report (" + rowCount + " rows)",
+                Map.of("reportType", reportType, "rowCount", rowCount, "fileName", fileName)));
+
+        return new CsvExportResult(content, fileName, contentType, rowCount, export.getId());
+    }
+
     private void appendMetric(StringBuilder csv, String metric, Object value) {
         csv.append(escapeCsv(metric)).append(',').append(escapeCsv(formatValue(value))).append('\n');
     }
@@ -296,8 +449,12 @@ public class ReportExportService {
     }
 
     private String fileName(String prefix, String businessCode) {
+        return fileName(prefix, businessCode, "csv");
+    }
+
+    private String fileName(String prefix, String businessCode, String extension) {
         String date = LocalDate.now(ZoneOffset.UTC).format(FILE_DATE);
-        return prefix + "-" + businessCode + "-" + date + ".csv";
+        return prefix + "-" + businessCode + "-" + date + "." + extension;
     }
 
     private ReportExportResponse toResponse(ReportExport export) {

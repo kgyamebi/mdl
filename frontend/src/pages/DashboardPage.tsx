@@ -191,7 +191,7 @@ export function DashboardPage() {
               )}
               {hasPermission('copilot:use') && (
                 <Link to="/copilot" className="btn btn--primary">
-                  Ask Copilot
+                  Ask MDL AI Assistant 💬
                 </Link>
               )}
             </div>

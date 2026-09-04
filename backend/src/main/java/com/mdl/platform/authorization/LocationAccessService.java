@@ -96,6 +96,22 @@ public class LocationAccessService {
         requireAccessibleLocation(context, locationId);
     }
 
+    /**
+     * Operational stock recording at any active shop/warehouse in the business.
+     */
+    public Location requireBusinessStockLocation(UserContext context, Long locationId) {
+        Location location = locationRepository.findByIdAndBusinessId(locationId, context.businessId())
+                .orElseThrow(() -> new NotFoundException("Location not found"));
+
+        if (!"ACTIVE".equals(location.getStatus())) {
+            throw new NotFoundException("Location not found");
+        }
+        if (!Set.of("WAREHOUSE", "SHOP").contains(location.getLocationType())) {
+            throw new NotFoundException("Location is not a stock location");
+        }
+        return location;
+    }
+
     public boolean canAccessLocation(UserContext context, Long locationId) {
         if (isOwner(context)) {
             return true;

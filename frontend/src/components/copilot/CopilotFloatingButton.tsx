@@ -34,29 +34,88 @@ function writeStoredPosition(position: FabPosition): void {
   }
 }
 
+function getSafeAreaBottom(): number {
+  if (typeof document === 'undefined') {
+    return 0;
+  }
+  const probe = document.createElement('div');
+  probe.style.position = 'fixed';
+  probe.style.bottom = '0';
+  probe.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  document.body.appendChild(probe);
+  const inset = probe.getBoundingClientRect().height;
+  probe.remove();
+  return inset;
+}
+
+function getBottomNavHeight(): number {
+  if (typeof document === 'undefined') {
+    return 0;
+  }
+  const nav = document.querySelector('.layout__bottom-nav');
+  if (!nav || getComputedStyle(nav).display === 'none') {
+    return 0;
+  }
+  return nav.getBoundingClientRect().height;
+}
+
+function getStickyFooterHeight(): number {
+  if (typeof document === 'undefined') {
+    return 0;
+  }
+  const posSubmit = document.querySelector('.pos-form__submit');
+  if (!posSubmit) {
+    return 0;
+  }
+  return posSubmit.getBoundingClientRect().height;
+}
+
 function getBottomInset(): number {
-  if (typeof window === 'undefined') {
-    return 20;
+  const margin = 12;
+  const navHeight = getBottomNavHeight();
+  if (navHeight > 0) {
+    return navHeight + margin;
   }
-  const isMobile = window.matchMedia('(max-width: 768px)').matches;
-  if (!isMobile) {
-    return 20;
+  const stickyFooter = getStickyFooterHeight();
+  if (stickyFooter > 0) {
+    return stickyFooter + margin;
   }
-  return 96;
+  return margin + getSafeAreaBottom();
+}
+
+function getWorkspaceDetailInset(): number {
+  if (typeof document === 'undefined') {
+    return 0;
+  }
+  const detail = document.querySelector('.workspace-split--open .workspace-split__detail');
+  if (!detail) {
+    return 0;
+  }
+  const rect = detail.getBoundingClientRect();
+  if (rect.width <= 0 || rect.left >= window.innerWidth - 40) {
+    return 0;
+  }
+  return Math.min(rect.width + 24, window.innerWidth * 0.45);
 }
 
 function getDefaultPosition(width: number, height: number): FabPosition {
-  const margin = 20;
+  const margin = 16;
+  const bottomInset = getBottomInset();
+  const detailInset = getWorkspaceDetailInset();
   return {
-    x: Math.max(margin, window.innerWidth - width - margin),
-    y: Math.max(margin, window.innerHeight - height - getBottomInset()),
+    x: Math.max(margin, window.innerWidth - width - margin - detailInset),
+    y: Math.max(margin, window.innerHeight - height - bottomInset),
   };
 }
 
 function clampPosition(position: FabPosition, width: number, height: number): FabPosition {
   const margin = 8;
-  const maxX = Math.max(margin, window.innerWidth - width - margin);
-  const maxY = Math.max(margin, window.innerHeight - height - margin);
+  const bottomInset = getBottomInset();
+  const detailInset = getWorkspaceDetailInset();
+  const maxX = Math.max(margin, window.innerWidth - width - margin - detailInset);
+  const maxY = Math.max(margin, window.innerHeight - height - bottomInset);
   return {
     x: Math.min(Math.max(margin, position.x), maxX),
     y: Math.min(Math.max(margin, position.y), maxY),
@@ -100,7 +159,7 @@ export function CopilotFloatingButton() {
 
   useEffect(() => {
     measureAndPlace();
-  }, [measureAndPlace]);
+  }, [measureAndPlace, location.pathname]);
 
   useEffect(() => {
     function handleResize() {
@@ -113,8 +172,27 @@ export function CopilotFloatingButton() {
     }
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [position]);
+
+    const observed = [
+      document.querySelector('.layout__bottom-nav'),
+      document.querySelector('.pos-form__submit'),
+      document.querySelector('.workspace-split--open'),
+    ].filter((node): node is Element => node != null);
+
+    const observer =
+      observed.length > 0
+        ? new ResizeObserver(() => {
+            measureAndPlace();
+          })
+        : null;
+
+    observed.forEach((node) => observer?.observe(node));
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      observer?.disconnect();
+    };
+  }, [measureAndPlace, location.pathname]);
 
   if (!hasPermission('copilot:use') || location.pathname === '/copilot') {
     return null;
@@ -233,7 +311,7 @@ export function CopilotFloatingButton() {
         <strong className="copilot-fab__label">Ask MDL AI Assistant</strong>
         <span className="copilot-fab__emoji" aria-hidden="true">
           {' '}
-          🤖💬
+          💬
         </span>
       </span>
     </button>

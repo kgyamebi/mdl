@@ -31,3 +31,15 @@ export function fetchInventoryBalances(params: {
 
   return apiRequest<PageResponse<InventoryBalance>>(`/api/inventory/balances?${query}`);
 }
+
+export function recordWarehouseStock(payload: {
+  locationId: number;
+  productId: number;
+  quantityChange: number;
+  reason: string;
+}): Promise<{ id: number; quantityChange: number }> {
+  return apiRequest<{ id: number; quantityChange: number }>('/api/inventory/warehouse-stock', {
+    method: 'POST',
+    body: payload,
+  });
+}

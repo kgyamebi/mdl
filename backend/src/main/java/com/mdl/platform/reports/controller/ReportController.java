@@ -90,6 +90,27 @@ public class ReportController {
         return toCsvResponse(reportExportService.exportInventoryBalances(locationId, true));
     }
 
+    @GetMapping("/sales-summary/export/pdf")
+    public ResponseEntity<byte[]> exportSalesSummaryPdf(
+            @RequestParam(required = false) Long shopId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to) {
+        return toFileResponse(reportExportService.exportSalesSummaryPdf(shopId, from, to));
+    }
+
+    @GetMapping("/inventory-balances/export/pdf")
+    public ResponseEntity<byte[]> exportInventoryBalancesPdf(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(defaultValue = "false") boolean lowStockOnly) {
+        return toFileResponse(reportExportService.exportInventoryBalancesPdf(locationId, lowStockOnly));
+    }
+
+    @GetMapping("/low-stock/export/pdf")
+    public ResponseEntity<byte[]> exportLowStockPdf(
+            @RequestParam(required = false) Long locationId) {
+        return toFileResponse(reportExportService.exportInventoryBalancesPdf(locationId, true));
+    }
+
     @GetMapping("/exports")
     public ResponseEntity<ApiResponse<PageResponse<ReportExportResponse>>> listExports(
             @RequestParam(required = false) String reportType,
@@ -104,6 +125,10 @@ public class ReportController {
     }
 
     private ResponseEntity<byte[]> toCsvResponse(CsvExportResult result) {
+        return toFileResponse(result);
+    }
+
+    private ResponseEntity<byte[]> toFileResponse(CsvExportResult result) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.fileName() + "\"")
                 .contentType(MediaType.parseMediaType(result.contentType()))

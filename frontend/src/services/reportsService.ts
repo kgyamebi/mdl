@@ -44,10 +44,14 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function downloadCsv(path: string, fallbackFileName: string): Promise<void> {
+  return downloadFile(path, fallbackFileName, 'text/csv, application/json');
+}
+
+async function downloadFile(path: string, fallbackFileName: string, accept: string): Promise<void> {
   const execute = (token?: string) =>
     fetch(`${resolveApiBase()}${path}`, {
       headers: {
-        Accept: 'text/csv, application/json',
+        Accept: accept,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
@@ -135,6 +139,45 @@ export function exportLowStockCsv(params: { locationId?: number }): Promise<void
 
   const suffix = query.size > 0 ? `?${query}` : '';
   return downloadCsv(`/api/reports/low-stock/export${suffix}`, 'low-stock.csv');
+}
+
+export function exportSalesSummaryPdf(params: {
+  shopId?: number;
+  from?: string;
+  to?: string;
+}): Promise<void> {
+  const query = new URLSearchParams();
+  if (params.shopId) {
+    query.set('shopId', String(params.shopId));
+  }
+  appendInstantParam(query, 'from', params.from ?? '');
+  appendInstantParam(query, 'to', params.to ?? '');
+  const suffix = query.size > 0 ? `?${query}` : '';
+  return downloadFile(`/api/reports/sales-summary/export/pdf${suffix}`, 'sales-summary.pdf', 'application/pdf, application/json');
+}
+
+export function exportInventoryBalancesPdf(params: {
+  locationId?: number;
+  lowStockOnly?: boolean;
+}): Promise<void> {
+  const query = new URLSearchParams();
+  if (params.locationId) {
+    query.set('locationId', String(params.locationId));
+  }
+  if (params.lowStockOnly) {
+    query.set('lowStockOnly', 'true');
+  }
+  const suffix = query.size > 0 ? `?${query}` : '';
+  return downloadFile(`/api/reports/inventory-balances/export/pdf${suffix}`, 'inventory-balances.pdf', 'application/pdf, application/json');
+}
+
+export function exportLowStockPdf(params: { locationId?: number }): Promise<void> {
+  const query = new URLSearchParams();
+  if (params.locationId) {
+    query.set('locationId', String(params.locationId));
+  }
+  const suffix = query.size > 0 ? `?${query}` : '';
+  return downloadFile(`/api/reports/low-stock/export/pdf${suffix}`, 'low-stock.pdf', 'application/pdf, application/json');
 }
 
 export function fetchReportExports(params: {

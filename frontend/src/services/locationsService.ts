@@ -42,3 +42,36 @@ export function updateTransferRoute(
     body: payload,
   });
 }
+
+export function createShop(payload: {
+  name: string;
+  code?: string;
+  city?: string;
+  country?: string;
+}): Promise<Shop> {
+  return apiRequest<Shop>('/api/shops', { method: 'POST', body: payload });
+}
+
+export function deactivateShop(id: number): Promise<Shop> {
+  return apiRequest<Shop>(`/api/shops/${id}`, { method: 'DELETE' });
+}
+
+export function createMainWarehouse(payload: {
+  name: string;
+  code?: string;
+  city?: string;
+  country?: string;
+  description?: string;
+  restricted?: boolean;
+  warehouseType?: 'MAIN' | 'SHOP';
+}): Promise<Warehouse> {
+  return apiRequest<Warehouse>('/api/warehouses', { method: 'POST', body: payload });
+}
+
+export function deactivateWarehouse(id: number): Promise<Warehouse> {
+  return apiRequest<Warehouse>(`/api/warehouses/${id}`, { method: 'DELETE' });
+}
+
+export function deleteTransferRoute(id: number): Promise<void> {
+  return apiRequest<void>(`/api/transfer-routes/${id}`, { method: 'DELETE' });
+}
