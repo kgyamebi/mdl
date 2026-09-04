@@ -11,6 +11,7 @@ import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCou
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMoreMenu } from './MobileMoreMenu';
 import { InstallAppButton } from '../InstallAppButton';
+import { PostLoginInstallBanner } from '../PostLoginInstallBanner';
 import { CopilotFloatingButton } from '../copilot/CopilotFloatingButton';
 import { MdlLogo } from '../brand/MdlLogo';
 
@@ -97,6 +98,7 @@ export function AppLayout() {
 
       <div className="layout__main">
         <main className="layout__content">
+          <PostLoginInstallBanner />
           <Outlet />
         </main>
       </div>

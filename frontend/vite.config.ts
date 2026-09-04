@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'prompt',
-        includeAssets: ['icon.svg'],
+        includeAssets: ['icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
         manifest: {
           name: 'Modern Dream Light',
           short_name: 'MDL',
@@ -30,6 +30,24 @@ export default defineConfig(({ mode }) => {
               purpose: 'any',
             },
             {
+              src: 'icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: 'icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: 'icon-512-maskable.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+            {
               src: 'icon.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
@@ -38,7 +56,7 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api/, /^\/ws/, /^\/actuator/],
           runtimeCaching: [

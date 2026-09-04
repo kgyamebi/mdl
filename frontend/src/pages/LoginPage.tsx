@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MdlLogo } from '../components/brand/MdlLogo';
+import { InstallAppButton } from '../components/InstallAppButton';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
@@ -116,6 +117,13 @@ export function LoginPage() {
           <p className="hint auth-card__hint">
             Demo: owner@mdl.local / Owner@123! · manager: michael@mdl.local / Manager@123!
           </p>
+        )}
+
+        {!mfaToken && (
+          <div className="auth-card__install">
+            <p className="auth-card__install-label muted">Use MDL on your phone every day?</p>
+            <InstallAppButton variant="login" />
+          </div>
         )}
 
         <Link to="/" className="auth-card__back">
