@@ -1,9 +1,10 @@
 package com.mdl.platform.security;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -21,21 +22,25 @@ public class AuthCookieSupport {
     private long refreshTokenExpiryDays;
 
     public void writeRefreshCookie(HttpServletResponse response, String refreshToken) {
-        Cookie cookie = new Cookie(REFRESH_COOKIE, refreshToken);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie);
-        cookie.setPath("/api/auth");
-        cookie.setMaxAge(Math.toIntExact(refreshTokenExpiryDays * 24 * 60 * 60));
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .path("/api/auth")
+                .sameSite(secureCookie ? "None" : "Lax")
+                .maxAge(refreshTokenExpiryDays * 24 * 60 * 60)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     public void clearRefreshCookie(HttpServletResponse response) {
-        Cookie cookie = new Cookie(REFRESH_COOKIE, "");
-        cookie.setHttpOnly(true);
-        cookie.setSecure(secureCookie);
-        cookie.setPath("/api/auth");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_COOKIE, "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .path("/api/auth")
+                .sameSite(secureCookie ? "None" : "Lax")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     public Optional<String> readRefreshCookie(HttpServletRequest request) {
@@ -44,7 +49,7 @@ public class AuthCookieSupport {
         }
         return Arrays.stream(request.getCookies())
                 .filter(cookie -> REFRESH_COOKIE.equals(cookie.getName()))
-                .map(Cookie::getValue)
+                .map(jakarta.servlet.http.Cookie::getValue)
                 .filter(value -> value != null && !value.isBlank())
                 .findFirst();
     }

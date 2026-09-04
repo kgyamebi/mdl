@@ -1,4 +1,7 @@
-# Development profile — verbose logging
+# Development profile — verbose logging + LAN access
+server:
+  address: 0.0.0.0
+
 logging:
   level:
     com.mdl.platform: DEBUG

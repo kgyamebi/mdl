@@ -4,7 +4,7 @@ import {
   saveSession,
 } from '../auth/authStorage';
 import type { ApiResponse, LoginResponse, PageResponse, ReportExport } from '../types/api';
-import { resolveApiBase } from '../config/apiBase';
+import { buildApiUrl } from '../config/apiBase';
 import { apiRequest } from './apiClient';
 
 function parseFileName(contentDisposition: string | null, fallback: string): string {
@@ -18,7 +18,7 @@ function parseFileName(contentDisposition: string | null, fallback: string): str
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
-    const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
+    const response = await fetch(buildApiUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -49,7 +49,7 @@ async function downloadCsv(path: string, fallbackFileName: string): Promise<void
 
 async function downloadFile(path: string, fallbackFileName: string, accept: string): Promise<void> {
   const execute = (token?: string) =>
-    fetch(`${resolveApiBase()}${path}`, {
+    fetch(buildApiUrl(path), {
       headers: {
         Accept: accept,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

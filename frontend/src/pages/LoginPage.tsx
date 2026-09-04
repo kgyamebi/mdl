@@ -4,7 +4,7 @@ import { MdlLogo } from '../components/brand/MdlLogo';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
-  const { login, completeMfa, user } = useAuth();
+  const { login, completeMfa, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [loginId, setLoginId] = useState('');
@@ -16,6 +16,16 @@ export function LoginPage() {
 
   const redirectTo =
     (location.state as { from?: string } | null)?.from ?? '/dashboard';
+
+  if (isLoading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <p className="muted">Loading session…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (user) {
     return <Navigate to={redirectTo} replace />;

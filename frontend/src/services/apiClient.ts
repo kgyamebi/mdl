@@ -3,7 +3,7 @@ import {
   getAccessToken,
   saveSession,
 } from '../auth/authStorage';
-import { resolveApiBase } from '../config/apiBase';
+import { buildApiUrl, getApiDebugInfo, resolveApiBase } from '../config/apiBase';
 import type { ApiResponse, AuthUser, LoginResponse } from '../types/api';
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
@@ -18,48 +18,95 @@ export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler;
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+function logApiDebug(message: string, details?: Record<string, unknown>): void {
+  if (import.meta.env.DEV) {
+    console.debug('[MDL API]', message, details ?? '');
+  }
+}
+
+async function parseResponse<T>(response: Response, requestUrl: string): Promise<T> {
   const contentType = response.headers.get('content-type') ?? '';
   let body: ApiResponse<T>;
 
   try {
     if (!contentType.includes('application/json')) {
+      const preview = (await response.text()).slice(0, 200);
+      logApiDebug('Non-JSON response', {
+        url: requestUrl,
+        status: response.status,
+        contentType,
+        preview,
+      });
       throw new Error('non_json');
     }
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message !== 'non_json') {
+      logApiDebug('JSON parse failed', {
+        url: requestUrl,
+        status: response.status,
+        error: error.message,
+      });
+    }
+
     if (!response.ok) {
       throw new Error(
         response.status >= 500
-          ? 'Server is unavailable. Make sure the backend is running on this computer.'
-          : 'Could not reach the server. Check your network connection and try again.',
+          ? `Server error (${response.status}). Check that the backend is running on port 8080.`
+          : `Could not reach the API (${response.status}). URL: ${requestUrl}`,
       );
     }
-    throw new Error('Unexpected server response. Please try again.');
+    throw new Error(`Unexpected server response from ${requestUrl}. Expected JSON.`);
   }
 
   if (!response.ok || !body.success) {
+    logApiDebug('API error response', {
+      url: requestUrl,
+      status: response.status,
+      message: body.message,
+    });
     throw new Error(body.message || `Request failed: ${response.status}`);
   }
+
   return body.data;
 }
 
-function toFriendlyError(error: unknown): string {
+function toFriendlyError(error: unknown, requestUrl?: string): string {
   if (!(error instanceof Error)) {
     return 'Sign in failed. Please try again.';
   }
 
   const message = error.message.trim();
+  const urlHint = requestUrl ? ` (${requestUrl})` : '';
+
+  if (message.startsWith('Invalid API URL')) {
+    return `${message} Fix VITE_API_BASE_URL in your .env file.`;
+  }
+
   if (
     message === 'The string did not match the expected pattern.' ||
     message === 'JSON Parse error: Unexpected EOF' ||
     message.startsWith('JSON Parse error')
   ) {
-    return 'Could not reach the server. Make sure the backend is running and you are on the same Wi‑Fi network.';
+    const info = getApiDebugInfo();
+    return (
+      `Cannot reach the backend${urlHint}. ` +
+      `Page: ${info.pageOrigin}, API mode: ${info.mode}, API base: ${info.apiBase}. ` +
+      'On mobile, use http://YOUR-PC-IP:5173 and ensure backend listens on 0.0.0.0:8080.'
+    );
   }
 
-  if (message === 'Load failed' || message === 'Failed to fetch' || message === 'NetworkError when attempting to fetch resource.') {
-    return 'Cannot reach the server. On your PC, make sure the backend (port 8080) and frontend (port 5173) are both running, then refresh this page.';
+  if (
+    message === 'Load failed' ||
+    message === 'Failed to fetch' ||
+    message === 'NetworkError when attempting to fetch resource.'
+  ) {
+    const info = getApiDebugInfo();
+    return (
+      `Network error — cannot reach the backend${urlHint}. ` +
+      `Try opening ${info.sampleLoginUrl.replace('/api/auth/login', '/api/health')} in Safari first. ` +
+      `API mode: ${info.mode}.`
+    );
   }
 
   return message || 'Sign in failed. Please try again.';
@@ -68,8 +115,9 @@ function toFriendlyError(error: unknown): string {
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
+      const url = buildApiUrl('/api/auth/refresh');
       try {
-        const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             Accept: 'application/json',
@@ -79,16 +127,18 @@ async function refreshAccessToken(): Promise<string | null> {
         });
 
         if (!response.ok) {
+          logApiDebug('Refresh failed', { url, status: response.status });
           return null;
         }
 
-        const data = await parseResponse<LoginResponse>(response);
+        const data = await parseResponse<LoginResponse>(response, url);
         if (data.accessToken && data.user) {
           saveSession(data.accessToken, null, data.user);
           return data.accessToken;
         }
         return null;
-      } catch {
+      } catch (error) {
+        logApiDebug('Refresh network error', { url, error: String(error) });
         return null;
       } finally {
         refreshPromise = null;
@@ -101,6 +151,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, auth = true, headers, ...rest } = options;
+  const requestUrl = buildApiUrl(path);
 
   const requestHeaders: Record<string, string> = {
     Accept: 'application/json',
@@ -119,7 +170,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   const execute = (tokenOverride?: string) =>
-    fetch(`${resolveApiBase()}${path}`, {
+    fetch(requestUrl, {
       ...rest,
       credentials: 'include',
       headers: {
@@ -142,12 +193,15 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  return parseResponse<T>(response);
+  return parseResponse<T>(response, requestUrl);
 }
 
 export async function loginRequest(login: string, password: string): Promise<LoginResponse> {
+  const requestUrl = buildApiUrl('/api/auth/login');
+  logApiDebug('Login attempt', getApiDebugInfo());
+
   try {
-    const response = await fetch(`${resolveApiBase()}/api/auth/login`, {
+    const response = await fetch(requestUrl, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -156,14 +210,18 @@ export async function loginRequest(login: string, password: string): Promise<Log
       credentials: 'include',
       body: JSON.stringify({ login, password }),
     });
-    return await parseResponse<LoginResponse>(response);
+
+    logApiDebug('Login response', { url: requestUrl, status: response.status });
+    return await parseResponse<LoginResponse>(response, requestUrl);
   } catch (error) {
-    throw new Error(toFriendlyError(error));
+    logApiDebug('Login failed', { url: requestUrl, error: String(error) });
+    throw new Error(toFriendlyError(error, requestUrl));
   }
 }
 
 export async function mfaChallengeRequest(mfaToken: string, code: string): Promise<LoginResponse> {
-  const response = await fetch(`${resolveApiBase()}/api/auth/mfa/challenge`, {
+  const requestUrl = buildApiUrl('/api/auth/mfa/challenge');
+  const response = await fetch(requestUrl, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -172,12 +230,12 @@ export async function mfaChallengeRequest(mfaToken: string, code: string): Promi
     credentials: 'include',
     body: JSON.stringify({ mfaToken, code }),
   });
-  return parseResponse<LoginResponse>(response);
+  return parseResponse<LoginResponse>(response, requestUrl);
 }
 
 export async function logoutRequest(): Promise<void> {
   try {
-    await fetch(`${resolveApiBase()}/api/auth/logout`, {
+    await fetch(buildApiUrl('/api/auth/logout'), {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -196,18 +254,24 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
 }
 
 export async function bootstrapSession(): Promise<LoginResponse | null> {
-  const response = await fetch(`${resolveApiBase()}/api/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-  });
-  if (!response.ok) {
+  const requestUrl = buildApiUrl('/api/auth/refresh');
+  try {
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      return null;
+    }
+    return parseResponse<LoginResponse>(response, requestUrl);
+  } catch (error) {
+    logApiDebug('Bootstrap refresh failed', { url: requestUrl, error: String(error) });
     return null;
   }
-  return parseResponse<LoginResponse>(response);
 }
 
 export function getHealthStatus() {
@@ -224,3 +288,6 @@ export async function mfaConfirmRequest(code: string): Promise<void> {
     body: { code },
   });
 }
+
+/** @deprecated use buildApiUrl from config/apiBase */
+export { resolveApiBase };

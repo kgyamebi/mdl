@@ -46,6 +46,7 @@ public class WebConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", config);
+        source.registerCorsConfiguration("/ws/**", config);
         return source;
     }
 
@@ -69,6 +70,23 @@ public class WebConfig {
                     );
                 } else {
                     mapping.allowedOrigins(allowedOrigins.split(","));
+                }
+
+                var wsMapping = registry.addMapping("/ws/**")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
+
+                if (allowLanOrigins) {
+                    wsMapping.allowedOriginPatterns(
+                            "http://localhost:*",
+                            "http://127.0.0.1:*",
+                            "http://192.168.*:*",
+                            "http://10.*:*",
+                            "http://172.*:*"
+                    );
+                } else {
+                    wsMapping.allowedOrigins(allowedOrigins.split(","));
                 }
             }
         };
