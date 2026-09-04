@@ -69,7 +69,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Transfers',
     icon: '🚚',
     group: 'logistics',
-    permissions: ['transfer:view'],
+    permissions: ['transfer:view', 'stock:request'],
   },
   {
     to: '/imports',
@@ -93,7 +93,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortLabel: 'Reports',
     icon: '📊',
     group: 'management',
-    permissions: ['report:export'],
+    permissions: ['report:view', 'report:export'],
   },
   {
     to: '/approvals',

@@ -33,6 +33,7 @@ public class LocationManagementService {
     private final ShopRepository shopRepository;
     private final WarehouseTransferRouteRepository transferRouteRepository;
     private final LocationQueryService locationQueryService;
+    private final TransferRouteProvisioningService transferRouteProvisioningService;
 
     public LocationManagementService(
             AuthorizationService authorizationService,
@@ -40,13 +41,15 @@ public class LocationManagementService {
             WarehouseRepository warehouseRepository,
             ShopRepository shopRepository,
             WarehouseTransferRouteRepository transferRouteRepository,
-            LocationQueryService locationQueryService) {
+            LocationQueryService locationQueryService,
+            TransferRouteProvisioningService transferRouteProvisioningService) {
         this.authorizationService = authorizationService;
         this.locationRepository = locationRepository;
         this.warehouseRepository = warehouseRepository;
         this.shopRepository = shopRepository;
         this.transferRouteRepository = transferRouteRepository;
         this.locationQueryService = locationQueryService;
+        this.transferRouteProvisioningService = transferRouteProvisioningService;
     }
 
     @Transactional
@@ -88,6 +91,8 @@ public class LocationManagementService {
         shop.setStatus("ACTIVE");
         shop = shopRepository.save(shop);
 
+        transferRouteProvisioningService.provisionRoutesForShopWarehouse(context.businessId(), warehouse.getId());
+
         return locationQueryService.getShop(shop.getId());
     }
 
@@ -120,6 +125,10 @@ public class LocationManagementService {
         warehouse.setDescription(request.description());
         warehouse.setStatus("ACTIVE");
         warehouse = warehouseRepository.save(warehouse);
+
+        if ("MAIN".equals(warehouseType)) {
+            transferRouteProvisioningService.provisionRoutesForMainWarehouse(context.businessId(), warehouse.getId());
+        }
 
         return locationQueryService.getWarehouse(warehouse.getId());
     }

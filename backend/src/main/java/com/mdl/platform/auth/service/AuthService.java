@@ -248,7 +248,12 @@ public class AuthService {
                 .findDefaultBusiness(user.getId())
                 .orElseThrow(() -> new UnauthorizedException("No active business membership found"));
 
-        return toAuthUserResponse(user, business, context.roles(), context.permissions());
+        Set<String> roles = new HashSet<>(userAuthProfileRepository.findRoleCodes(
+                user.getId(), business.getBusinessId()));
+        Set<String> permissions = new HashSet<>(userAuthProfileRepository.findPermissionCodes(
+                user.getId(), business.getBusinessId()));
+
+        return toAuthUserResponse(user, business, roles, permissions);
     }
 
     private void registerFailedLogin(User user, HttpServletRequest httpRequest) {

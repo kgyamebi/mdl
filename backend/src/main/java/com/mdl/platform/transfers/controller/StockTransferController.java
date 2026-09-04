@@ -5,6 +5,7 @@ import com.mdl.platform.common.dto.PageResponse;
 import com.mdl.platform.transfers.dto.CreateStockTransferRequest;
 import com.mdl.platform.transfers.dto.ReceiveStockTransferRequest;
 import com.mdl.platform.transfers.dto.RejectStockTransferRequest;
+import com.mdl.platform.transfers.dto.TransferFormOptionsResponse;
 import com.mdl.platform.transfers.dto.StockTransferResponse;
 import com.mdl.platform.transfers.service.StockTransferService;
 import jakarta.validation.Valid;
@@ -34,6 +35,11 @@ public class StockTransferController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok(stockTransferService.listTransfers(status, page, size)));
+    }
+
+    @GetMapping("/form-options")
+    public ResponseEntity<ApiResponse<TransferFormOptionsResponse>> getFormOptions() {
+        return ResponseEntity.ok(ApiResponse.ok(stockTransferService.getFormOptions()));
     }
 
     @GetMapping("/{id}")

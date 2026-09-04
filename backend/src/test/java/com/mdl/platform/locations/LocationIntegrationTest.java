@@ -119,6 +119,14 @@ class LocationIntegrationTest {
 
         long shopId = objectMapper.readTree(createResult.getResponse().getContentAsString())
                 .path("data").path("id").asLong();
+        long shopWarehouseId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("warehouseId").asLong();
+
+        mockMvc.perform(get("/api/transfer-routes")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.fromWarehouseId==" + shopWarehouseId + ")]").exists())
+                .andExpect(jsonPath("$.data[?(@.toWarehouseId==" + shopWarehouseId + ")]").exists());
 
         mockMvc.perform(delete("/api/shops/" + shopId)
                         .header("Authorization", "Bearer " + ownerToken))

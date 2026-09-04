@@ -313,7 +313,7 @@ public class ReportExportService {
 
     @Transactional(readOnly = true)
     public PageResponse<ReportExportResponse> listExports(String reportType, int page, int size) {
-        authorizationService.requirePermission("report:export");
+        authorizationService.requireAnyPermission("report:view", "report:export");
         UserContext context = authorizationService.requireAuthenticated();
 
         Page<ReportExport> results = exportRepository.search(

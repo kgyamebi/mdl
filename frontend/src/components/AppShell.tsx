@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { OfflineBanner } from './OfflineBanner';
-import { PwaInstallPrompt } from './PwaInstallPrompt';
 import { PwaUpdatePrompt } from './PwaUpdatePrompt';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
@@ -15,7 +14,6 @@ export function AppShell({ children }: AppShellProps) {
     <div className="app-shell">
       <OfflineBanner online={online} />
       <PwaUpdatePrompt />
-      <PwaInstallPrompt />
       {children}
     </div>
   );

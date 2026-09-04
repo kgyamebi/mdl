@@ -1,5 +1,9 @@
 import { apiRequest } from './apiClient';
-import type { PageResponse, StockTransfer } from '../types/api';
+import type { PageResponse, StockTransfer, TransferFormOptions } from '../types/api';
+
+export function fetchTransferFormOptions(): Promise<TransferFormOptions> {
+  return apiRequest<TransferFormOptions>('/api/stock-transfers/form-options');
+}
 
 export function fetchTransfers(params: {
   status?: string;

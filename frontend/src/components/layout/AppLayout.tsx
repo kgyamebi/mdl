@@ -10,6 +10,7 @@ import {
 import { useUnreadNotificationCount } from '../../hooks/useUnreadNotificationCount';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileMoreMenu } from './MobileMoreMenu';
+import { InstallAppButton } from '../InstallAppButton';
 import { CopilotFloatingButton } from '../copilot/CopilotFloatingButton';
 import { MdlLogo } from '../brand/MdlLogo';
 
@@ -79,6 +80,7 @@ export function AppLayout() {
             <strong>{user?.fullName}</strong>
             <p className="muted">{user?.roles.join(', ')}</p>
           </div>
+          <InstallAppButton variant="sidebar" />
           <button type="button" className="btn btn--ghost" onClick={() => logout()}>
             Sign out
           </button>

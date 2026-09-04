@@ -44,7 +44,8 @@ function formatParameters(parameters: string): string {
 }
 
 export function ReportsPage() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasAnyPermission } = useAuth();
+  const canView = hasAnyPermission('report:view', 'report:export');
   const canExport = hasPermission('report:export');
 
   const [shops, setShops] = useState<Shop[]>([]);
@@ -89,7 +90,7 @@ export function ReportsPage() {
   }, [page, reportTypeFilter]);
 
   useEffect(() => {
-    if (!canExport) {
+    if (!canView) {
       setLoading(false);
       return;
     }
@@ -112,13 +113,13 @@ export function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [canExport]);
+  }, [canView]);
 
   useEffect(() => {
-    if (canExport) {
+    if (canView) {
       loadHistory();
     }
-  }, [canExport, loadHistory]);
+  }, [canView, loadHistory]);
 
   async function runExport(
     key: string,
@@ -181,7 +182,7 @@ export function ReportsPage() {
     );
   }
 
-  if (!canExport) {
+  if (!canView) {
     return (
       <div className="page">
         <header className="page__header">
@@ -191,7 +192,7 @@ export function ReportsPage() {
           </div>
         </header>
         <section className="panel">
-          <p className="muted">You need the <code>report:export</code> permission to download reports.</p>
+          <p className="muted">You need report access to view exports.</p>
         </section>
       </div>
     );
@@ -203,7 +204,11 @@ export function ReportsPage() {
         <div>
           <p className="eyebrow">Reports</p>
           <h1>Export downloads</h1>
-          <p className="subtitle">Download CSV or branded PDF reports</p>
+          <p className="subtitle">
+            {canExport
+              ? 'Download CSV or branded PDF reports'
+              : 'View export history. Download requires export permission.'}
+          </p>
         </div>
         <div className="page__header-actions">
           <button type="button" className="btn btn--ghost" onClick={loadHistory} disabled={loading}>
@@ -215,6 +220,7 @@ export function ReportsPage() {
       {error && <p className="form__error">{error}</p>}
       {success && <p className="form__success">{success}</p>}
 
+      {canExport ? (
       <div className="report-grid">
         <section className="panel report-panel">
           <h2>Sales summary</h2>
@@ -347,6 +353,11 @@ export function ReportsPage() {
           </form>
         </section>
       </div>
+      ) : (
+        <section className="panel">
+          <p className="muted">You can view export history below. Downloading new reports requires export permission.</p>
+        </section>
+      )}
 
       <section className="panel">
         <div className="panel__header">

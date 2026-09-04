@@ -57,11 +57,31 @@ class StockTransferIntegrationTest {
 
     private String ownerToken;
     private String workerToken;
+    private String managerToken;
 
     @BeforeEach
     void login() throws Exception {
         ownerToken = login("owner@mdl.local", "Owner@123!");
         workerToken = login("john@mdl.local", "Worker@123!");
+        managerToken = login("michael@mdl.local", "Manager@123!");
+    }
+
+    @Test
+    void shopManagerCanLoadTransferFormOptions() throws Exception {
+        mockMvc.perform(get("/api/stock-transfers/form-options")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.warehouses").isArray())
+                .andExpect(jsonPath("$.data.warehouses[0]").exists());
+
+        mockMvc.perform(get("/api/locations")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/products")
+                        .param("size", "5")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -182,6 +202,28 @@ class StockTransferIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shopCanReturnStockToMainWarehouse() throws Exception {
+        long mainWarehouseId = findWarehouseId(ownerToken, "WH-MAIN");
+        long shopAWarehouseId = findWarehouseId(ownerToken, "WH-SHOP-A");
+        long productId = findProductId(ownerToken, "MDL-LED-001");
+
+        CreateStockTransferRequest createRequest = new CreateStockTransferRequest(
+                shopAWarehouseId,
+                mainWarehouseId,
+                "Return excess stock to main",
+                List.of(new CreateStockTransferRequest.CreateStockTransferItemRequest(
+                        productId, BigDecimal.ONE, "Shop return")));
+
+        mockMvc.perform(post("/api/stock-transfers")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.fromWarehouseId").value(shopAWarehouseId))
+                .andExpect(jsonPath("$.data.toWarehouseId").value(mainWarehouseId));
     }
 
     private long findWarehouseId(String token, String code) throws Exception {

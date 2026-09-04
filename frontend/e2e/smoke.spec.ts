@@ -39,7 +39,7 @@ test('owner can open core pages from sidebar', async ({ page }) => {
     { link: 'Returns', heading: 'Returns' },
     { link: 'Transfers', heading: 'Stock transfers' },
     { link: 'Reports', heading: 'Export downloads' },
-    { link: 'Copilot', heading: 'MDL Copilot' },
+    { link: 'MDL AI Assistant', heading: 'MDL AI Assistant' },
   ];
 
   for (const entry of pages) {
@@ -65,7 +65,7 @@ test('copilot floating button opens assistant', async ({ page }) => {
   await fab.click({ force: true });
 
   await expect(page).toHaveURL(/\/copilot$/);
-  await expect(page.getByRole('heading', { name: 'MDL Copilot' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'MDL AI Assistant' })).toBeVisible();
 });
 
 test('sales POS completes shop A sale', async ({ page }) => {

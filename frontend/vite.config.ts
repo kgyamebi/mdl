@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'modern DL',
-        short_name: 'modern DL',
+        name: 'Modern Dream Light',
+        short_name: 'MDL',
         description: 'Modern Dream Light — Business Management Platform',
         theme_color: '#0f1419',
         background_color: '#0f1419',

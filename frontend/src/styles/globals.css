@@ -2135,3 +2135,54 @@ select.input {
   font-size: 0.875rem;
   color: var(--color-muted);
 }
+
+.install-app-button {
+  width: 100%;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.install-app-button--mobile {
+  width: auto;
+  margin-bottom: 0;
+}
+
+.install-app-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.install-app-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.install-app-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 28rem);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
+.install-app-modal__steps {
+  margin: 1rem 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.install-app-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

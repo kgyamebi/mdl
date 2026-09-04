@@ -250,6 +250,27 @@ export interface Warehouse {
   status: string;
 }
 
+export interface TransferWarehouseOption {
+  id: number;
+  code: string;
+  name: string;
+  warehouseType: string;
+  linkedShopId: number | null;
+  linkedShopName: string | null;
+}
+
+export interface TransferShopOption {
+  id: number;
+  code: string;
+  name: string;
+  warehouseId: number;
+}
+
+export interface TransferFormOptions {
+  warehouses: TransferWarehouseOption[];
+  shops: TransferShopOption[];
+}
+
 export interface StockTransferItem {
   id: number;
   productId: number;

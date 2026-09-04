@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { TransferActionPanel } from '../components/transfers/TransferActionPanel';
-import { fetchWarehouses } from '../services/locationsService';
 import { fetchProducts } from '../services/productsService';
-import { createTransfer, fetchTransfer, fetchTransfers } from '../services/transfersService';
-import type { Product, StockTransfer, Warehouse } from '../types/api';
+import { createTransfer, fetchTransfer, fetchTransferFormOptions, fetchTransfers } from '../services/transfersService';
+import type { Product, StockTransfer, TransferShopOption, TransferWarehouseOption } from '../types/api';
+import {
+  formatTransferEndpointLabel,
+  formatTransferRouteLabel,
+  groupWarehousesForTransfer,
+  mapTransferFormOptions,
+} from '../utils/transferEndpointLabel';
 
 const STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: '', label: 'All statuses' },
@@ -48,6 +53,48 @@ function formatStatus(status: string): string {
     .join(' ');
 }
 
+function WarehouseSelectOptions({
+  warehouses,
+  shops,
+}: {
+  warehouses: Array<TransferWarehouseOption | { id: number; code: string; name: string; warehouseType: string; linkedShopName?: string | null }>;
+  shops: Array<Pick<TransferShopOption, 'warehouseId' | 'name'>>;
+}) {
+  const groups = groupWarehousesForTransfer(warehouses, shops);
+
+  return (
+    <>
+      {groups.main.length > 0 && (
+        <optgroup label="Main warehouses">
+          {groups.main.map((warehouse) => (
+            <option key={warehouse.id} value={warehouse.id}>
+              {formatTransferEndpointLabel(warehouse, shops)}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {groups.shopStock.length > 0 && (
+        <optgroup label="Shop stock">
+          {groups.shopStock.map((warehouse) => (
+            <option key={warehouse.id} value={warehouse.id}>
+              {formatTransferEndpointLabel(warehouse, shops)}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {groups.other.length > 0 && (
+        <optgroup label="Other warehouses">
+          {groups.other.map((warehouse) => (
+            <option key={warehouse.id} value={warehouse.id}>
+              {formatTransferEndpointLabel(warehouse, shops)}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </>
+  );
+}
+
 export function TransfersPage() {
   const { hasAnyPermission } = useAuth();
   const canCreate = hasAnyPermission('transfer:create', 'stock:request');
@@ -64,8 +111,10 @@ export function TransfersPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [transferWarehouses, setTransferWarehouses] = useState<TransferWarehouseOption[]>([]);
+  const [transferShops, setTransferShops] = useState<TransferShopOption[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [formOptionsLoading, setFormOptionsLoading] = useState(false);
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [productId, setProductId] = useState('');
@@ -130,19 +179,59 @@ export function TransfersPage() {
   }, [selectedId]);
 
   useEffect(() => {
+    fetchTransferFormOptions()
+      .then((formOptions) => {
+        setTransferWarehouses(formOptions.warehouses);
+        setTransferShops(formOptions.shops);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!canCreate || !showCreateForm) {
       return;
     }
 
-    Promise.all([fetchWarehouses(), fetchProducts({ size: 100 })])
-      .then(([warehouseList, productPage]) => {
-        setWarehouses(warehouseList);
+    let cancelled = false;
+    setFormOptionsLoading(true);
+    setCreateError(null);
+
+    Promise.all([fetchTransferFormOptions(), fetchProducts({ size: 100 })])
+      .then(([formOptions, productPage]) => {
+        if (cancelled) {
+          return;
+        }
+        setTransferWarehouses(formOptions.warehouses);
+        setTransferShops(formOptions.shops);
         setProducts(productPage.items);
+        if (formOptions.warehouses.length === 0) {
+          setCreateError('No authorized transfer routes are available for your role yet. Ask the owner to configure routes.');
+        } else if (productPage.items.length === 0) {
+          setCreateError('No products are available to transfer.');
+        }
       })
-      .catch(() => {
-        setCreateError('Failed to load warehouses or products');
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setCreateError(err.message || 'Failed to load transfer form');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFormOptionsLoading(false);
+        }
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [canCreate, showCreateForm]);
+
+  const mappedFormOptions = useMemo(
+    () => mapTransferFormOptions({ warehouses: transferWarehouses, shops: transferShops }),
+    [transferWarehouses, transferShops],
+  );
+
+  const routeLabelsReady = mappedFormOptions.warehouses.length > 0;
 
   function handleTransferUpdated(transfer: StockTransfer) {
     setSelectedTransfer(transfer);
@@ -206,37 +295,36 @@ export function TransfersPage() {
       {showCreateForm && canCreate && (
         <section className="panel">
           <h2>New stock transfer</h2>
+          <p className="muted">
+            Move stock between main warehouses, shop stock locations, and other warehouses.
+            Shop destinations use each shop&apos;s stock location — the same inventory used for sales.
+          </p>
+          {formOptionsLoading && <p className="muted">Loading transfer options…</p>}
           <form className="form form--grid form--touch-friendly" onSubmit={handleCreate}>
             <label className="form__field">
-              <span>From warehouse</span>
+              <span>From location</span>
               <select
                 className="input"
                 value={fromWarehouseId}
                 onChange={(event) => setFromWarehouseId(event.target.value)}
                 required
+                disabled={formOptionsLoading || transferWarehouses.length === 0}
               >
                 <option value="">Select source…</option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} — {warehouse.name}
-                  </option>
-                ))}
+                <WarehouseSelectOptions warehouses={transferWarehouses} shops={transferShops} />
               </select>
             </label>
             <label className="form__field">
-              <span>To warehouse</span>
+              <span>To location</span>
               <select
                 className="input"
                 value={toWarehouseId}
                 onChange={(event) => setToWarehouseId(event.target.value)}
                 required
+                disabled={formOptionsLoading || transferWarehouses.length === 0}
               >
                 <option value="">Select destination…</option>
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} — {warehouse.name}
-                  </option>
-                ))}
+                <WarehouseSelectOptions warehouses={transferWarehouses} shops={transferShops} />
               </select>
             </label>
             <label className="form__field">
@@ -246,6 +334,7 @@ export function TransfersPage() {
                 value={productId}
                 onChange={(event) => setProductId(event.target.value)}
                 required
+                disabled={formOptionsLoading || products.length === 0}
               >
                 <option value="">Select product…</option>
                 {products.map((product) => (
@@ -278,7 +367,11 @@ export function TransfersPage() {
             </label>
             {createError && <p className="form__error form__field--wide">{createError}</p>}
             <div className="form__field form__field--wide">
-              <button type="submit" className="btn btn--primary" disabled={creating}>
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={creating || formOptionsLoading || transferWarehouses.length === 0 || products.length === 0}
+              >
                 {creating ? 'Submitting…' : 'Submit request'}
               </button>
             </div>
@@ -343,7 +436,14 @@ export function TransfersPage() {
                         <strong>{transfer.transferNumber}</strong>
                       </td>
                       <td>
-                        {transfer.fromWarehouseCode} → {transfer.toWarehouseCode}
+                        {routeLabelsReady
+                          ? formatTransferRouteLabel(
+                              transfer.fromWarehouseId,
+                              transfer.toWarehouseId,
+                              mappedFormOptions.warehouses,
+                              mappedFormOptions.shops,
+                            )
+                          : `${transfer.fromWarehouseCode} → ${transfer.toWarehouseCode}`}
                       </td>
                       <td>
                         <span className={`pill ${statusPillClass(transfer.status)}`}>
@@ -393,7 +493,14 @@ export function TransfersPage() {
                     <div>
                       <h2>{selectedTransfer.transferNumber}</h2>
                       <p className="muted">
-                        {selectedTransfer.fromWarehouseName} → {selectedTransfer.toWarehouseName}
+                        {routeLabelsReady
+                          ? formatTransferRouteLabel(
+                              selectedTransfer.fromWarehouseId,
+                              selectedTransfer.toWarehouseId,
+                              mappedFormOptions.warehouses,
+                              mappedFormOptions.shops,
+                            )
+                          : `${selectedTransfer.fromWarehouseName} → ${selectedTransfer.toWarehouseName}`}
                       </p>
                     </div>
                     <span className={`pill ${statusPillClass(selectedTransfer.status)}`}>

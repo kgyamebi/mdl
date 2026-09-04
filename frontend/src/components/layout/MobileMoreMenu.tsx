@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { InstallAppButton } from '../InstallAppButton';
 import { NavLink } from 'react-router-dom';
 import type { NavItem } from '../../config/navItems';
 import type { AuthUser } from '../../types/api';
@@ -83,6 +84,7 @@ export function MobileMoreMenu({
         )}
 
         <div className="mobile-more__actions">
+          <InstallAppButton variant="mobile" />
           <button
             type="button"
             className="btn btn--ghost"
