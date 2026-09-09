@@ -18,7 +18,9 @@ import com.mdl.platform.inventory.dto.CancelStocktakeRequest;
 import com.mdl.platform.inventory.dto.CreateStocktakeRequest;
 import com.mdl.platform.inventory.dto.ReviewStocktakeRequest;
 import com.mdl.platform.inventory.dto.StocktakeResponse;
+import com.mdl.platform.inventory.dto.SubmitStocktakeRequest;
 import com.mdl.platform.inventory.dto.UpsertStocktakeLineRequest;
+import com.mdl.platform.inventory.dto.UpsertStocktakeLinesRequest;
 import com.mdl.platform.inventory.service.InventoryAdjustmentRequestService;
 import com.mdl.platform.inventory.service.InventoryLedgerService;
 import com.mdl.platform.inventory.service.InventoryQueryService;
@@ -197,9 +199,18 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.ok("Count recorded", stocktakeService.upsertLine(id, request)));
     }
 
+    @PostMapping("/stocktakes/{id}/lines/batch")
+    public ResponseEntity<ApiResponse<StocktakeResponse>> upsertStocktakeLines(
+            @PathVariable Long id,
+            @Valid @RequestBody UpsertStocktakeLinesRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Counts recorded", stocktakeService.upsertLines(id, request)));
+    }
+
     @PostMapping("/stocktakes/{id}/submit")
-    public ResponseEntity<ApiResponse<StocktakeResponse>> submitStocktake(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok("Stocktake submitted", stocktakeService.submitStocktake(id)));
+    public ResponseEntity<ApiResponse<StocktakeResponse>> submitStocktake(
+            @PathVariable Long id,
+            @RequestBody(required = false) SubmitStocktakeRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Stocktake submitted", stocktakeService.submitStocktake(id, request)));
     }
 
     @PostMapping("/stocktakes/{id}/approve")

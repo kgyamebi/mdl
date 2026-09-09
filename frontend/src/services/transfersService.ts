@@ -1,8 +1,38 @@
 import { apiRequest } from './apiClient';
 import type { PageResponse, StockTransfer, TransferFormOptions } from '../types/api';
+import { fetchShops, fetchTransferRoutes, fetchWarehouses } from './locationsService';
 
 export function fetchTransferFormOptions(): Promise<TransferFormOptions> {
   return apiRequest<TransferFormOptions>('/api/stock-transfers/form-options');
+}
+
+export async function loadTransferFormOptions(): Promise<TransferFormOptions> {
+  const formOptions = await fetchTransferFormOptions();
+  const needsRoutes = !formOptions.routes?.length;
+  const [shops, warehouses, routes] = await Promise.all([
+    fetchShops().catch(() => []),
+    fetchWarehouses().catch(() => []),
+    needsRoutes ? fetchTransferRoutes().catch(() => []) : Promise.resolve([]),
+  ]);
+
+  return {
+    warehouses: formOptions.warehouses.map((warehouse) => ({
+      ...warehouse,
+      locationId:
+        shops.find((shop) => shop.warehouseId === warehouse.id)?.location?.id
+        ?? warehouse.locationId
+        ?? warehouses.find((entry) => entry.id === warehouse.id)?.location?.id,
+    })),
+    shops: formOptions.shops,
+    routes: formOptions.routes?.length
+      ? formOptions.routes
+      : routes
+          .filter((route) => route.enabled)
+          .map((route) => ({
+            fromWarehouseId: route.fromWarehouseId,
+            toWarehouseId: route.toWarehouseId,
+          })),
+  };
 }
 
 export function fetchTransfers(params: {

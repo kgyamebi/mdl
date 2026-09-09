@@ -31,8 +31,31 @@ export function upsertStocktakeLine(
   });
 }
 
-export function submitStocktake(stocktakeId: number): Promise<Stocktake> {
-  return apiRequest<Stocktake>(`/api/inventory/stocktakes/${stocktakeId}/submit`, { method: 'POST' });
+export function upsertStocktakeLines(
+  stocktakeId: number,
+  items: Array<{ productId: number; countedQuantity: number }>,
+): Promise<Stocktake> {
+  return apiRequest<Stocktake>(`/api/inventory/stocktakes/${stocktakeId}/lines/batch`, {
+    method: 'POST',
+    body: { items },
+  });
+}
+
+export function submitStocktake(
+  stocktakeId: number,
+  treatUncountedAsExpected = false,
+): Promise<Stocktake> {
+  return apiRequest<Stocktake>(`/api/inventory/stocktakes/${stocktakeId}/submit`, {
+    method: 'POST',
+    body: { treatUncountedAsExpected },
+  });
+}
+
+export function approveStocktake(stocktakeId: number, reviewNotes?: string): Promise<Stocktake> {
+  return apiRequest<Stocktake>(`/api/inventory/stocktakes/${stocktakeId}/approve`, {
+    method: 'POST',
+    body: { reviewNotes: reviewNotes ?? null },
+  });
 }
 
 export function cancelStocktake(stocktakeId: number, reason: string): Promise<Stocktake> {

@@ -8,6 +8,8 @@ import com.mdl.platform.common.dto.PageResponse;
 import com.mdl.platform.common.exception.ConflictException;
 import com.mdl.platform.common.exception.ForbiddenException;
 import com.mdl.platform.common.exception.NotFoundException;
+import com.mdl.platform.inventory.entity.InventoryBalance;
+import com.mdl.platform.inventory.repository.InventoryBalanceRepository;
 import com.mdl.platform.inventory.service.InventoryLedgerService;
 import com.mdl.platform.inventory.service.InventoryReservationService;
 import com.mdl.platform.locations.entity.Location;
@@ -39,6 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.Year;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -62,6 +65,7 @@ public class StockTransferService {
     private final LocationRepository locationRepository;
     private final WarehouseTransferRouteRepository routeRepository;
     private final ProductRepository productRepository;
+    private final InventoryBalanceRepository balanceRepository;
     private final InventoryLedgerService ledgerService;
     private final InventoryReservationService reservationService;
     private final AuditService auditService;
@@ -77,6 +81,7 @@ public class StockTransferService {
             LocationRepository locationRepository,
             WarehouseTransferRouteRepository routeRepository,
             ProductRepository productRepository,
+            InventoryBalanceRepository balanceRepository,
             InventoryLedgerService ledgerService,
             InventoryReservationService reservationService,
             AuditService auditService,
@@ -90,6 +95,7 @@ public class StockTransferService {
         this.locationRepository = locationRepository;
         this.routeRepository = routeRepository;
         this.productRepository = productRepository;
+        this.balanceRepository = balanceRepository;
         this.ledgerService = ledgerService;
         this.reservationService = reservationService;
         this.auditService = auditService;
@@ -111,14 +117,17 @@ public class StockTransferService {
 
         validateUniqueProducts(request.items());
         List<Product> products = loadAndValidateProducts(context.businessId(), request.items());
+        Long fromLocationId = resolveStockLocationId(context.businessId(), fromWarehouse);
+        Long toLocationId = resolveStockLocationId(context.businessId(), toWarehouse);
+        requireAvailableSourceStock(context.businessId(), fromLocationId, request.items(), products);
 
         StockTransfer transfer = new StockTransfer();
         transfer.setBusinessId(context.businessId());
         transfer.setTransferNumber(generateTransferNumber(context.businessId()));
         transfer.setFromWarehouseId(fromWarehouse.getId());
         transfer.setToWarehouseId(toWarehouse.getId());
-        transfer.setFromLocationId(fromWarehouse.getLocationId());
-        transfer.setToLocationId(toWarehouse.getLocationId());
+        transfer.setFromLocationId(fromLocationId);
+        transfer.setToLocationId(toLocationId);
         transfer.setStatus(directCreate ? "APPROVED" : "REQUESTED");
         transfer.setNotes(trimToNull(request.notes()));
         transfer.setRequestedBy(context.userId());
@@ -173,6 +182,7 @@ public class StockTransferService {
                 .collect(Collectors.toMap(Shop::getWarehouseId, Function.identity(), (left, right) -> left));
 
         Set<Long> warehouseIds = new LinkedHashSet<>();
+        List<TransferFormOptionsResponse.TransferRouteOption> routes = new ArrayList<>();
         for (WarehouseTransferRoute route : routeRepository.findByBusinessIdOrderByCreatedAtDesc(context.businessId())) {
             if (!route.isEnabled()) {
                 continue;
@@ -182,11 +192,10 @@ public class StockTransferService {
             if (from == null || to == null) {
                 continue;
             }
-            if (canSelectAnyRoute
-                    || accessibleLocationIds.contains(from.getLocationId())
-                    || accessibleLocationIds.contains(to.getLocationId())) {
+            if (canSelectAnyRoute || canSeeTransferRoute(accessibleLocationIds, context.businessId(), from, to)) {
                 warehouseIds.add(from.getId());
                 warehouseIds.add(to.getId());
+                routes.add(new TransferFormOptionsResponse.TransferRouteOption(from.getId(), to.getId()));
             }
         }
 
@@ -199,6 +208,7 @@ public class StockTransferService {
                             warehouse.getCode(),
                             warehouse.getName(),
                             warehouse.getWarehouseType(),
+                            shop != null ? shop.getLocationId() : warehouse.getLocationId(),
                             shop != null ? shop.getId() : null,
                             shop != null ? shop.getName() : null);
                 })
@@ -214,7 +224,7 @@ public class StockTransferService {
                         shop.getWarehouseId()))
                 .toList();
 
-        return new TransferFormOptionsResponse(warehouses, shops);
+        return new TransferFormOptionsResponse(warehouses, shops, routes);
     }
 
     @Transactional(readOnly = true)
@@ -449,6 +459,48 @@ public class StockTransferService {
         }
     }
 
+    /**
+     * Shop-linked warehouses move the shop-floor stock used for sales. Other
+     * warehouses use their own location.
+     */
+    private Long resolveStockLocationId(Long businessId, Warehouse warehouse) {
+        return shopRepository.findByBusinessIdAndStatusOrderByNameAsc(businessId, "ACTIVE").stream()
+                .filter(shop -> warehouse.getId().equals(shop.getWarehouseId()))
+                .map(Shop::getLocationId)
+                .findFirst()
+                .orElse(warehouse.getLocationId());
+    }
+
+    private void requireAvailableSourceStock(
+            Long businessId,
+            Long fromLocationId,
+            List<CreateStockTransferRequest.CreateStockTransferItemRequest> items,
+            List<Product> products) {
+        Map<Long, Product> productById = products.stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+        for (CreateStockTransferRequest.CreateStockTransferItemRequest item : items) {
+            InventoryBalance balance = balanceRepository
+                    .findByBusinessIdAndLocationIdAndProductId(businessId, fromLocationId, item.productId())
+                    .orElse(null);
+            BigDecimal available = balance == null
+                    ? BigDecimal.ZERO
+                    : balance.getQuantityOnHand().subtract(balance.getQuantityReserved());
+            if (item.quantity().compareTo(available) > 0) {
+                Product product = productById.get(item.productId());
+                String sku = product != null ? product.getSku() : "product";
+                throw new ConflictException("Insufficient available stock at source for " + sku);
+            }
+        }
+    }
+
+    private boolean canSeeTransferRoute(
+            Set<Long> accessibleLocationIds, Long businessId, Warehouse from, Warehouse to) {
+        return accessibleLocationIds.contains(resolveStockLocationId(businessId, from))
+                || accessibleLocationIds.contains(resolveStockLocationId(businessId, to))
+                || accessibleLocationIds.contains(from.getLocationId())
+                || accessibleLocationIds.contains(to.getLocationId());
+    }
+
     private void requireEnabledRoute(Long businessId, Long fromWarehouseId, Long toWarehouseId) {
         if (fromWarehouseId.equals(toWarehouseId)) {
             throw new ConflictException("Source and destination warehouses must differ");
@@ -465,8 +517,10 @@ public class StockTransferService {
             return;
         }
 
-        boolean fromAccessible = canAccessTransferLocation(context, fromWarehouse.getLocationId());
-        boolean toAccessible = canAccessTransferLocation(context, toWarehouse.getLocationId());
+        boolean fromAccessible = canAccessTransferLocation(
+                context, resolveStockLocationId(context.businessId(), fromWarehouse));
+        boolean toAccessible = canAccessTransferLocation(
+                context, resolveStockLocationId(context.businessId(), toWarehouse));
         if (!fromAccessible && !toAccessible) {
             throw new ForbiddenException("You do not have access to either transfer location");
         }

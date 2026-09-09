@@ -20,8 +20,11 @@ test.describe('Owner', () => {
     await page.getByRole('button', { name: 'New user' }).click();
     await expect(page.getByRole('group', { name: 'Shops they can sell from' }).getByRole('checkbox').first()).toBeVisible();
   });
+
+  test('can open operational pages without errors', async ({ page }) => {
     await openPageFromNav(page, 'Inventory', 'Inventory balances');
     await openPageFromNav(page, 'Sales', 'Sales');
+    await openPageFromNav(page, 'Stocktakes', 'Stocktakes');
     await openPageFromNav(page, 'Transfers', 'Stock transfers');
     await openPageFromNav(page, 'Reports', 'Export downloads');
   });
@@ -42,6 +45,16 @@ test.describe('Owner', () => {
     await expect(page.getByRole('heading', { name: 'New stock transfer', level: 2 })).toBeVisible();
     await expect(page.locator('.form__error').filter({ hasText: /Failed to load/i })).toHaveCount(0);
     await expect(page.locator('select.input').first().locator('option')).not.toHaveCount(1, { timeout: 15000 });
+    await expect(page.getByLabel('Product')).toBeVisible();
+    const fromSelect = page.getByLabel('From location');
+    const firstSource = await fromSelect.locator('option').nth(1).getAttribute('value');
+    if (firstSource) {
+      await fromSelect.selectOption(firstSource);
+      await expect(page.getByLabel('To location')).toBeEnabled({ timeout: 15000 });
+      await expect(page.getByLabel('To location').locator('option')).not.toHaveCount(1);
+      await page.getByLabel('Product').click();
+      await expect(page.getByRole('listbox')).toBeVisible({ timeout: 15000 });
+    }
   });
 });
 
@@ -54,8 +67,16 @@ test.describe('Shop manager', () => {
     await expectNavLink(page, 'Inventory', true);
     await expectNavLink(page, 'Sales', true);
     await expectNavLink(page, 'Transfers', true);
+    await expectNavLink(page, 'Stocktakes', true);
     await expectNavLink(page, 'Reports', true);
     await expectNavLink(page, 'Users', false);
+  });
+
+  test('can start a stocktake at an operable location', async ({ page }) => {
+    await openPageFromNav(page, 'Stocktakes', 'Stocktakes');
+    await page.getByRole('button', { name: 'New count' }).click();
+    await expect(page.getByRole('heading', { name: 'Start stocktake', level: 2 })).toBeVisible();
+    await expect(page.getByLabel('Location').locator('option')).not.toHaveCount(1, { timeout: 15000 });
   });
 
   test('can open transfers and load create form', async ({ page }) => {
@@ -90,6 +111,7 @@ test.describe('Shop worker', () => {
     await expectNavLink(page, 'Inventory', true);
     await expectNavLink(page, 'Sales', true);
     await expectNavLink(page, 'Transfers', true);
+    await expectNavLink(page, 'Stocktakes', true);
     await expectNavLink(page, 'Reports', false);
     await expectNavLink(page, 'Users', false);
   });
@@ -97,6 +119,11 @@ test.describe('Shop worker', () => {
   test('can open inventory and sales without errors', async ({ page }) => {
     await openPageFromNav(page, 'Inventory', 'Inventory balances');
     await openPageFromNav(page, 'Sales', 'Sales');
+    await openPageFromNav(page, 'Stocktakes', 'Stocktakes');
+    await expect(page.getByRole('button', { name: 'New count' })).toBeVisible();
+    await page.getByRole('button', { name: 'New count' }).click();
+    await expect(page.getByRole('heading', { name: 'Start stocktake', level: 2 })).toBeVisible();
+    await expect(page.getByLabel('Location').locator('option')).not.toHaveCount(1, { timeout: 15000 });
   });
 
   test('can open transfer request form', async ({ page }) => {

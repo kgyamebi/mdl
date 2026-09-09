@@ -72,7 +72,10 @@ class StockTransferIntegrationTest {
                         .header("Authorization", "Bearer " + managerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.warehouses").isArray())
-                .andExpect(jsonPath("$.data.warehouses[0]").exists());
+                .andExpect(jsonPath("$.data.warehouses[0]").exists())
+                .andExpect(jsonPath("$.data.routes").isArray())
+                .andExpect(jsonPath("$.data.routes[0].fromWarehouseId").exists())
+                .andExpect(jsonPath("$.data.routes[0].toWarehouseId").exists());
 
         mockMvc.perform(get("/api/locations")
                         .header("Authorization", "Bearer " + managerToken))
@@ -88,7 +91,7 @@ class StockTransferIntegrationTest {
     void workerCanRequestOwnerCanDispatchAndWorkerReceives() throws Exception {
         long mainWarehouseId = findWarehouseId(ownerToken, "WH-MAIN");
         long shopAWarehouseId = findWarehouseId(ownerToken, "WH-SHOP-A");
-        long shopALocationId = findLocationId(ownerToken, "LOC-WH-A");
+        long shopALocationId = findLocationId(ownerToken, "LOC-SHOP-A");
         long productId = findProductId(ownerToken, "MDL-LED-001");
 
         MvcResult balanceBefore = mockMvc.perform(get("/api/inventory/balances")
@@ -182,6 +185,26 @@ class StockTransferIntegrationTest {
         mockMvc.perform(post("/api/stock-transfers/" + transferId + "/dispatch")
                         .header("Authorization", "Bearer " + workerToken))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void cannotCreateTransferWhenSourceHasInsufficientStock() throws Exception {
+        long mainWarehouseId = findWarehouseId(ownerToken, "WH-MAIN");
+        long shopAWarehouseId = findWarehouseId(ownerToken, "WH-SHOP-A");
+        long productId = findProductId(ownerToken, "MDL-LED-001");
+
+        CreateStockTransferRequest request = new CreateStockTransferRequest(
+                shopAWarehouseId,
+                mainWarehouseId,
+                null,
+                List.of(new CreateStockTransferRequest.CreateStockTransferItemRequest(
+                        productId, new BigDecimal("999999"), null)));
+
+        mockMvc.perform(post("/api/stock-transfers")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
     }
 
     @Test

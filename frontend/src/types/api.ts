@@ -248,6 +248,7 @@ export interface Warehouse {
   restricted: boolean;
   description: string | null;
   status: string;
+  location?: LocationSummary;
 }
 
 export interface TransferWarehouseOption {
@@ -255,6 +256,7 @@ export interface TransferWarehouseOption {
   code: string;
   name: string;
   warehouseType: string;
+  locationId?: number;
   linkedShopId: number | null;
   linkedShopName: string | null;
 }
@@ -266,9 +268,15 @@ export interface TransferShopOption {
   warehouseId: number;
 }
 
+export interface TransferFormRoute {
+  fromWarehouseId: number;
+  toWarehouseId: number;
+}
+
 export interface TransferFormOptions {
   warehouses: TransferWarehouseOption[];
   shops: TransferShopOption[];
+  routes?: TransferFormRoute[];
 }
 
 export interface StockTransferItem {

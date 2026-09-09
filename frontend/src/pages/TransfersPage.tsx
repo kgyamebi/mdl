@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { TransferActionPanel } from '../components/transfers/TransferActionPanel';
-import { fetchProducts } from '../services/productsService';
-import { createTransfer, fetchTransfer, fetchTransferFormOptions, fetchTransfers } from '../services/transfersService';
-import type { Product, StockTransfer, TransferShopOption, TransferWarehouseOption } from '../types/api';
+import { TransferProductSelect } from '../components/transfers/TransferProductSelect';
+import { createTransfer, fetchTransfer, fetchTransfers, loadTransferFormOptions } from '../services/transfersService';
+import type {
+  InventoryBalance,
+  StockTransfer,
+  TransferFormRoute,
+  TransferShopOption,
+  TransferWarehouseOption,
+} from '../types/api';
 import {
   formatTransferEndpointLabel,
   formatTransferRouteLabel,
@@ -113,11 +119,11 @@ export function TransfersPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [transferWarehouses, setTransferWarehouses] = useState<TransferWarehouseOption[]>([]);
   const [transferShops, setTransferShops] = useState<TransferShopOption[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [transferRoutes, setTransferRoutes] = useState<TransferFormRoute[]>([]);
   const [formOptionsLoading, setFormOptionsLoading] = useState(false);
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
-  const [productId, setProductId] = useState('');
+  const [selectedStock, setSelectedStock] = useState<InventoryBalance | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
@@ -179,10 +185,11 @@ export function TransfersPage() {
   }, [selectedId]);
 
   useEffect(() => {
-    fetchTransferFormOptions()
+    loadTransferFormOptions()
       .then((formOptions) => {
         setTransferWarehouses(formOptions.warehouses);
         setTransferShops(formOptions.shops);
+        setTransferRoutes(formOptions.routes ?? []);
       })
       .catch(() => {});
   }, []);
@@ -196,18 +203,16 @@ export function TransfersPage() {
     setFormOptionsLoading(true);
     setCreateError(null);
 
-    Promise.all([fetchTransferFormOptions(), fetchProducts({ size: 100 })])
-      .then(([formOptions, productPage]) => {
+    loadTransferFormOptions()
+      .then((formOptions) => {
         if (cancelled) {
           return;
         }
         setTransferWarehouses(formOptions.warehouses);
         setTransferShops(formOptions.shops);
-        setProducts(productPage.items);
+        setTransferRoutes(formOptions.routes ?? []);
         if (formOptions.warehouses.length === 0) {
           setCreateError('No authorized transfer routes are available for your role yet. Ask the owner to configure routes.');
-        } else if (productPage.items.length === 0) {
-          setCreateError('No products are available to transfer.');
         }
       })
       .catch((err: Error) => {
@@ -233,6 +238,42 @@ export function TransfersPage() {
 
   const routeLabelsReady = mappedFormOptions.warehouses.length > 0;
 
+  const destinationWarehouses = useMemo(() => {
+    if (!fromWarehouseId) {
+      return [];
+    }
+    const fromId = Number(fromWarehouseId);
+    if (transferRoutes.length === 0) {
+      return transferWarehouses.filter((warehouse) => warehouse.id !== fromId);
+    }
+    const allowed = new Set(
+      transferRoutes
+        .filter((route) => route.fromWarehouseId === fromId)
+        .map((route) => route.toWarehouseId),
+    );
+    return transferWarehouses.filter((warehouse) => allowed.has(warehouse.id));
+  }, [fromWarehouseId, transferRoutes, transferWarehouses]);
+
+  const fromLocationId = useMemo(() => {
+    const warehouse = transferWarehouses.find((entry) => String(entry.id) === fromWarehouseId);
+    return warehouse?.locationId || null;
+  }, [fromWarehouseId, transferWarehouses]);
+
+  useEffect(() => {
+    if (!toWarehouseId) {
+      return;
+    }
+    if (!destinationWarehouses.some((warehouse) => String(warehouse.id) === toWarehouseId)) {
+      setToWarehouseId('');
+    }
+  }, [destinationWarehouses, toWarehouseId]);
+
+  const requestedQuantity = Number(quantity);
+  const exceedsAvailable =
+    selectedStock != null &&
+    Number.isFinite(requestedQuantity) &&
+    requestedQuantity > selectedStock.quantityAvailable;
+
   function handleTransferUpdated(transfer: StockTransfer) {
     setSelectedTransfer(transfer);
     setItems((current) =>
@@ -244,6 +285,14 @@ export function TransfersPage() {
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
     setCreateError(null);
+    if (!selectedStock) {
+      setCreateError('Select a product that has stock at the source location.');
+      return;
+    }
+    if (exceedsAvailable) {
+      setCreateError(`Only ${formatQty(selectedStock.quantityAvailable)} available at the source.`);
+      return;
+    }
     setCreating(true);
 
     try {
@@ -251,12 +300,12 @@ export function TransfersPage() {
         fromWarehouseId: Number(fromWarehouseId),
         toWarehouseId: Number(toWarehouseId),
         notes: notes.trim() || undefined,
-        items: [{ productId: Number(productId), quantity: Number(quantity) }],
+        items: [{ productId: selectedStock.productId, quantity: Number(quantity) }],
       });
       setShowCreateForm(false);
       setFromWarehouseId('');
       setToWarehouseId('');
-      setProductId('');
+      setSelectedStock(null);
       setQuantity('1');
       setNotes('');
       setSelectedId(created.id);
@@ -301,12 +350,16 @@ export function TransfersPage() {
           </p>
           {formOptionsLoading && <p className="muted">Loading transfer options…</p>}
           <form className="form form--grid form--touch-friendly" onSubmit={handleCreate}>
-            <label className="form__field">
+            <label className="form__field" htmlFor="transfer-from">
               <span>From location</span>
               <select
+                id="transfer-from"
                 className="input"
                 value={fromWarehouseId}
-                onChange={(event) => setFromWarehouseId(event.target.value)}
+                onChange={(event) => {
+                  setFromWarehouseId(event.target.value);
+                  setSelectedStock(null);
+                }}
                 required
                 disabled={formOptionsLoading || transferWarehouses.length === 0}
               >
@@ -314,36 +367,43 @@ export function TransfersPage() {
                 <WarehouseSelectOptions warehouses={transferWarehouses} shops={transferShops} />
               </select>
             </label>
-            <label className="form__field">
+            <label className="form__field" htmlFor="transfer-to">
               <span>To location</span>
               <select
+                id="transfer-to"
                 className="input"
                 value={toWarehouseId}
                 onChange={(event) => setToWarehouseId(event.target.value)}
                 required
-                disabled={formOptionsLoading || transferWarehouses.length === 0}
+                disabled={formOptionsLoading || !fromWarehouseId || destinationWarehouses.length === 0}
               >
-                <option value="">Select destination…</option>
-                <WarehouseSelectOptions warehouses={transferWarehouses} shops={transferShops} />
+                <option value="">
+                  {!fromWarehouseId
+                    ? 'Select a source first…'
+                    : destinationWarehouses.length === 0
+                      ? 'No enabled route from this source'
+                      : 'Select destination…'}
+                </option>
+                <WarehouseSelectOptions warehouses={destinationWarehouses} shops={transferShops} />
               </select>
             </label>
-            <label className="form__field">
+            <div className="form__field">
               <span>Product</span>
-              <select
-                className="input"
-                value={productId}
-                onChange={(event) => setProductId(event.target.value)}
-                required
-                disabled={formOptionsLoading || products.length === 0}
-              >
-                <option value="">Select product…</option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.sku} — {product.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <TransferProductSelect
+                inputId="transfer-product-search"
+                locationId={fromLocationId}
+                value={selectedStock}
+                onChange={setSelectedStock}
+                disabled={formOptionsLoading || transferWarehouses.length === 0}
+              />
+              <span className="hint">
+                {fromLocationId == null
+                  ? 'Pick a source first. Only stock on hand there can be transferred.'
+                  : selectedStock
+                    ? `${formatQty(selectedStock.quantityAvailable)} available at the source.`
+                    : 'Type a name or code, or open the list and scroll items that are in stock.'}
+              </span>
+            </div>
             <label className="form__field">
               <span>Quantity</span>
               <input
@@ -370,7 +430,15 @@ export function TransfersPage() {
               <button
                 type="submit"
                 className="btn btn--primary"
-                disabled={creating || formOptionsLoading || transferWarehouses.length === 0 || products.length === 0}
+                disabled={
+                  creating
+                  || formOptionsLoading
+                  || transferWarehouses.length === 0
+                  || !fromWarehouseId
+                  || !toWarehouseId
+                  || selectedStock == null
+                  || exceedsAvailable
+                }
               >
                 {creating ? 'Submitting…' : 'Submit request'}
               </button>

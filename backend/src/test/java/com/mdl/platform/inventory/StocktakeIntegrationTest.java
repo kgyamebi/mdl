@@ -128,6 +128,78 @@ class StocktakeIntegrationTest {
                 .andExpect(jsonPath("$.data.items[?(@.transactionType=='STOCKTAKE')]").exists());
     }
 
+    @Test
+    void submitCanTreatUncountedLinesAsExpected() throws Exception {
+        long locationId = findLocationId(ownerToken, "LOC-WH-A");
+        long productId = findProductId(ownerToken, "MDL-LED-002");
+
+        MvcResult createResult = mockMvc.perform(post("/api/inventory/stocktakes")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateStocktakeRequest(locationId, "Partial count", true))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long stocktakeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/lines")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UpsertStocktakeLineRequest(productId, BigDecimal.TEN, null))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/submit")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"treatUncountedAsExpected\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUBMITTED"));
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/approve")
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+    }
+
+    @Test
+    void workerCannotApproveStocktake() throws Exception {
+        long locationId = findLocationId(ownerToken, "LOC-WH-A");
+        long productId = findProductId(ownerToken, "MDL-LED-003");
+
+        MvcResult createResult = mockMvc.perform(post("/api/inventory/stocktakes")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new CreateStocktakeRequest(locationId, null, false))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long stocktakeId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/lines")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new UpsertStocktakeLineRequest(productId, BigDecimal.ONE, null))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/submit")
+                        .header("Authorization", "Bearer " + workerToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/inventory/stocktakes/" + stocktakeId + "/approve")
+                        .header("Authorization", "Bearer " + workerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
     private long findLocationId(String token, String code) throws Exception {
         MvcResult result = mockMvc.perform(get("/api/locations")
                         .header("Authorization", "Bearer " + token))

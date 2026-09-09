@@ -59,6 +59,7 @@ test('owner can open core pages from sidebar', async ({ page }) => {
     { link: 'Products', heading: 'Products' },
     { link: 'Sales', heading: 'Sales' },
     { link: 'Returns', heading: 'Returns' },
+    { link: 'Stocktakes', heading: 'Stocktakes' },
     { link: 'Transfers', heading: 'Stock transfers' },
     { link: 'Reports', heading: 'Export downloads' },
     { link: 'MDL AI Assistant', heading: 'MDL AI Assistant' },

@@ -17,6 +17,9 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
 
     Optional<InventoryBalance> findByIdAndBusinessId(Long id, Long businessId);
 
+    Optional<InventoryBalance> findByBusinessIdAndLocationIdAndProductId(
+            Long businessId, Long locationId, Long productId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT ib FROM InventoryBalance ib
@@ -61,6 +64,8 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
             @Param("minQuantity") BigDecimal minQuantity,
             @Param("maxQuantity") BigDecimal maxQuantity,
             Pageable pageable);
+
+    List<InventoryBalance> findByBusinessIdAndLocationIdOrderByIdAsc(Long businessId, Long locationId);
 
     List<InventoryBalance> findByBusinessIdAndProductIdAndLocationIdIn(
             Long businessId, Long productId, List<Long> locationIds);

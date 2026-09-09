@@ -1,56 +1,52 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { fetchProducts } from '../../services/productsService';
-import type { Product } from '../../types/api';
+import { fetchInventoryBalances } from '../../services/inventoryService';
+import type { InventoryBalance } from '../../types/api';
 
 const SEARCH_DEBOUNCE_MS = 250;
-const MAX_RESULTS = 25;
+const PAGE_SIZE = 50;
 
-interface ProductSearchSelectProps {
-  value: Product | null;
-  onChange: (product: Product | null) => void;
-  /** Optional per-product line shown under each suggestion, e.g. stock at the selected shop. */
-  hintFor?: (product: Product) => string;
-  /** Called with each batch of results so the caller can load extra detail for them. */
-  onResults?: (products: Product[], term: string) => void;
-  placeholder?: string;
+interface TransferProductSelectProps {
+  locationId: number | null;
+  value: InventoryBalance | null;
+  onChange: (balance: InventoryBalance | null) => void;
   disabled?: boolean;
   inputId?: string;
 }
 
-function productLabel(product: Product): string {
-  return `${product.sku} — ${product.name}`;
+function formatQty(value: number): string {
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value);
 }
 
-export function ProductSearchSelect({
+function productLabel(balance: InventoryBalance): string {
+  return `${balance.productSku} — ${balance.productName}`;
+}
+
+export function TransferProductSelect({
+  locationId,
   value,
   onChange,
-  hintFor,
-  onResults,
-  placeholder = 'Type item name or code…',
   disabled = false,
   inputId,
-}: ProductSearchSelectProps) {
+}: TransferProductSelectProps) {
   const generatedId = useId();
-  const fieldId = inputId ?? `product-search-${generatedId}`;
+  const fieldId = inputId ?? `transfer-product-${generatedId}`;
   const listboxId = `${fieldId}-listbox`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
   const ignoreNextFocusRef = useRef(false);
 
-  // Held in a ref so a caller passing an inline callback can't restart the search.
-  const onResultsRef = useRef(onResults);
-  onResultsRef.current = onResults;
-
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
-  const [results, setResults] = useState<Product[]>([]);
+  const [results, setResults] = useState<InventoryBalance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
 
   const inputValue = editing ? query : value ? productLabel(value) : '';
+  const pickerDisabled = disabled || locationId == null;
 
   const closeAndReset = useCallback(() => {
     setOpen(false);
@@ -70,15 +66,7 @@ export function ProductSearchSelect({
   }, [closeAndReset]);
 
   useEffect(() => {
-    if (!editing) {
-      return;
-    }
-
-    const term = query.trim();
-    if (term.length === 0) {
-      setResults([]);
-      setLoading(false);
-      setError(null);
+    if (!editing || locationId == null) {
       return;
     }
 
@@ -87,19 +75,25 @@ export function ProductSearchSelect({
     setError(null);
 
     const timer = setTimeout(() => {
-      fetchProducts({ search: term, status: 'ACTIVE', size: MAX_RESULTS, page: 0 })
+      fetchInventoryBalances({
+        locationId,
+        search: query.trim() || undefined,
+        minQuantity: 0.01,
+        size: PAGE_SIZE,
+        page: 0,
+      })
         .then((response) => {
-          // Ignore responses from superseded keystrokes.
           if (requestRef.current !== requestId) {
             return;
           }
-          setResults(response.items);
+          setResults(response.items.filter((item) => item.quantityAvailable > 0));
+          setTotalMatches(response.totalElements);
           setHighlight(0);
-          onResultsRef.current?.(response.items, term);
         })
         .catch((err: Error) => {
           if (requestRef.current === requestId) {
             setResults([]);
+            setTotalMatches(0);
             setError(err.message || 'Search failed');
           }
         })
@@ -111,18 +105,18 @@ export function ProductSearchSelect({
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [query, editing]);
+  }, [query, editing, locationId]);
 
-  function selectProduct(product: Product) {
+  function selectBalance(balance: InventoryBalance) {
     ignoreNextFocusRef.current = true;
-    onChange(product);
+    onChange(balance);
     closeAndReset();
   }
 
-  function handleOptionPointerDown(event: React.PointerEvent<HTMLButtonElement>, product: Product) {
+  function handleOptionPointerDown(event: React.PointerEvent<HTMLButtonElement>, balance: InventoryBalance) {
     event.preventDefault();
     event.stopPropagation();
-    selectProduct(product);
+    selectBalance(balance);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -137,11 +131,9 @@ export function ProductSearchSelect({
       setHighlight((current) => (results.length === 0 ? 0 : (current - 1 + results.length) % results.length));
       return;
     }
-    if (event.key === 'Enter') {
-      if (open && results[highlight]) {
-        event.preventDefault();
-        selectProduct(results[highlight]);
-      }
+    if (event.key === 'Enter' && open && results[highlight]) {
+      event.preventDefault();
+      selectBalance(results[highlight]);
       return;
     }
     if (event.key === 'Escape') {
@@ -164,13 +156,20 @@ export function ProductSearchSelect({
           aria-controls={listboxId}
           aria-autocomplete="list"
           aria-activedescendant={
-            showDropdown && results[highlight] ? `${listboxId}-option-${results[highlight].id}` : undefined
+            showDropdown && results[highlight] ? `${listboxId}-option-${results[highlight].productId}` : undefined
           }
           autoComplete="off"
-          disabled={disabled}
-          placeholder={placeholder}
+          disabled={pickerDisabled}
+          placeholder={
+            locationId == null
+              ? 'Select a source location first…'
+              : 'Type or scroll to pick stock on hand…'
+          }
           value={inputValue}
           onFocus={() => {
+            if (pickerDisabled) {
+              return;
+            }
             if (ignoreNextFocusRef.current) {
               ignoreNextFocusRef.current = false;
               return;
@@ -203,42 +202,45 @@ export function ProductSearchSelect({
 
       {showDropdown && (
         <ul className="product-search__results" id={listboxId} role="listbox">
-          {query.trim().length === 0 && (
-            <li className="product-search__message">Start typing to find an item by name or code.</li>
-          )}
-          {query.trim().length > 0 && loading && (
-            <li className="product-search__message">Searching…</li>
-          )}
+          {loading && <li className="product-search__message">Loading stock…</li>}
           {error && <li className="product-search__message product-search__message--error">{error}</li>}
-          {query.trim().length > 0 && !loading && !error && results.length === 0 && (
-            <li className="product-search__message">No items match “{query.trim()}”.</li>
+          {!loading && !error && results.length === 0 && (
+            <li className="product-search__message">
+              {query.trim()
+                ? `No transferable stock matches “${query.trim()}”.`
+                : 'No stock on hand at this location to transfer.'}
+            </li>
           )}
-          {results.map((product, index) => {
-            const hint = hintFor?.(product) ?? '';
-            return (
-              <li key={product.id} role="none">
-                <button
-                  type="button"
-                  id={`${listboxId}-option-${product.id}`}
-                  role="option"
-                  aria-selected={index === highlight}
-                  className={`product-search__option${
-                    index === highlight ? ' product-search__option--active' : ''
-                  }`}
-                  onPointerEnter={() => setHighlight(index)}
-                  onPointerDown={(event) => handleOptionPointerDown(event, product)}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
-                  <span className="product-search__option-code">{product.sku}</span>
-                  <span className="product-search__option-name">{product.name}</span>
-                  {hint && <span className="product-search__option-hint">{hint}</span>}
-                </button>
-              </li>
-            );
-          })}
+          {results.map((balance, index) => (
+            <li key={balance.productId} role="none">
+              <button
+                type="button"
+                id={`${listboxId}-option-${balance.productId}`}
+                role="option"
+                aria-selected={index === highlight}
+                className={`product-search__option${
+                  index === highlight ? ' product-search__option--active' : ''
+                }`}
+                onPointerEnter={() => setHighlight(index)}
+                onPointerDown={(event) => handleOptionPointerDown(event, balance)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+              >
+                <span className="product-search__option-code">{balance.productSku}</span>
+                <span className="product-search__option-name">{balance.productName}</span>
+                <span className="product-search__option-hint">
+                  {formatQty(balance.quantityAvailable)} {balance.unitOfMeasure.toLowerCase()} available
+                </span>
+              </button>
+            </li>
+          ))}
+          {!loading && totalMatches > results.length && (
+            <li className="product-search__message">
+              Showing {results.length} of {totalMatches}. Type a name or code to find the rest.
+            </li>
+          )}
         </ul>
       )}
     </div>

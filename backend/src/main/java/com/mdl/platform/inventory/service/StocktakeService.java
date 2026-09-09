@@ -13,7 +13,9 @@ import com.mdl.platform.inventory.dto.CreateStocktakeRequest;
 import com.mdl.platform.inventory.dto.ReviewStocktakeRequest;
 import com.mdl.platform.inventory.dto.StocktakeLineResponse;
 import com.mdl.platform.inventory.dto.StocktakeResponse;
+import com.mdl.platform.inventory.dto.SubmitStocktakeRequest;
 import com.mdl.platform.inventory.dto.UpsertStocktakeLineRequest;
+import com.mdl.platform.inventory.dto.UpsertStocktakeLinesRequest;
 import com.mdl.platform.inventory.entity.InventoryBalance;
 import com.mdl.platform.inventory.entity.Stocktake;
 import com.mdl.platform.inventory.entity.StocktakeLine;
@@ -177,7 +179,19 @@ public class StocktakeService {
     }
 
     @Transactional
-    public StocktakeResponse submitStocktake(Long stocktakeId) {
+    public StocktakeResponse upsertLines(Long stocktakeId, UpsertStocktakeLinesRequest request) {
+        if (request == null || request.items() == null || request.items().isEmpty()) {
+            throw new ConflictException("At least one count line is required");
+        }
+        StocktakeResponse last = null;
+        for (UpsertStocktakeLineRequest item : request.items()) {
+            last = upsertLine(stocktakeId, item);
+        }
+        return last;
+    }
+
+    @Transactional
+    public StocktakeResponse submitStocktake(Long stocktakeId, SubmitStocktakeRequest request) {
         authorizationService.requirePermission("stock:count");
         UserContext context = authorizationService.requireAuthenticated();
 
@@ -189,11 +203,16 @@ public class StocktakeService {
             throw new ConflictException("Stocktake must have at least one count line");
         }
 
+        boolean treatUncountedAsExpected = request != null && Boolean.TRUE.equals(request.treatUncountedAsExpected());
+
         int varianceLines = 0;
         BigDecimal totalVariance = BigDecimal.ZERO;
         for (StocktakeLine line : lines) {
             if (line.getCountedQuantity() == null) {
-                throw new ConflictException("All lines must have a counted quantity before submit");
+                if (!treatUncountedAsExpected) {
+                    throw new ConflictException("All lines must have a counted quantity before submit");
+                }
+                line.setCountedQuantity(line.getExpectedQuantity());
             }
             BigDecimal variance = line.getCountedQuantity().subtract(line.getExpectedQuantity())
                     .setScale(4, RoundingMode.HALF_UP);
@@ -250,6 +269,7 @@ public class StocktakeService {
 
     @Transactional
     public StocktakeResponse approveStocktake(Long stocktakeId, ReviewStocktakeRequest review) {
+        authorizationService.requireAnyPermission("stocktake:approve", "inventory:adjust");
         UserContext context = authorizationService.requireAuthenticated();
 
         Stocktake stocktake = requireSubmittedStocktake(context, stocktakeId);
@@ -329,20 +349,11 @@ public class StocktakeService {
     }
 
     private void preloadLinesFromBalances(UserContext context, Stocktake stocktake, Long locationId) {
-        Page<InventoryBalance> balances = balanceRepository.search(
-                context.businessId(),
-                List.of(locationId),
-                locationId,
-                null,
-                "",
-                false,
-                false,
-                null,
-                null,
-                PageRequest.of(0, 500));
+        List<InventoryBalance> balances = balanceRepository.findByBusinessIdAndLocationIdOrderByIdAsc(
+                context.businessId(), locationId);
 
         int count = 0;
-        for (InventoryBalance balance : balances.getContent()) {
+        for (InventoryBalance balance : balances) {
             Product product = ledgerService.requireTrackableProduct(context.businessId(), balance.getProductId());
 
             StocktakeLine line = new StocktakeLine();

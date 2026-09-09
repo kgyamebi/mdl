@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import {
   approveTransfer,
@@ -22,13 +22,21 @@ export function TransferActionPanel({ transfer, onUpdated }: TransferActionPanel
   const { hasPermission, hasAnyPermission } = useAuth();
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
-  const [receiveQuantities, setReceiveQuantities] = useState<Record<number, string>>(() =>
-    Object.fromEntries(
-      transfer.items
-        .filter((item) => item.remainingToReceive > 0)
-        .map((item) => [item.id, String(item.remainingToReceive)]),
-    ),
-  );
+  const [receiveQuantities, setReceiveQuantities] = useState<Record<number, string>>({});
+
+  const receiveStateKey = transfer.items
+    .map((item) => `${item.id}:${item.remainingToReceive}`)
+    .join('|');
+
+  useEffect(() => {
+    setReceiveQuantities(
+      Object.fromEntries(
+        transfer.items
+          .filter((item) => item.remainingToReceive > 0)
+          .map((item) => [item.id, String(item.remainingToReceive)]),
+      ),
+    );
+  }, [transfer.id, transfer.status, receiveStateKey, transfer.items]);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +87,14 @@ export function TransferActionPanel({ transfer, onUpdated }: TransferActionPanel
 
     if (items.length === 0) {
       setError('Enter at least one quantity to receive');
+      return;
+    }
+    const overRemaining = transfer.items.find((item) => {
+      const entered = Number(receiveQuantities[item.id] ?? 0);
+      return entered > item.remainingToReceive;
+    });
+    if (overRemaining) {
+      setError(`Cannot receive more than ${formatQty(overRemaining.remainingToReceive)} remaining for ${overRemaining.productSku}`);
       return;
     }
 
