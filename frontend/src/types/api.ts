@@ -511,6 +511,7 @@ export interface UserLocationAssignment {
   locationId: number;
   locationCode: string;
   locationName: string;
+  locationType?: string;
   accessLevel: string;
 }
 

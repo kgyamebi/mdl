@@ -103,6 +103,7 @@ export function SalesPage() {
 
   const [showPosForm, setShowPosForm] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
+  const [shopsLoaded, setShopsLoaded] = useState(false);
   const [shopId, setShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
@@ -243,7 +244,8 @@ export function SalesPage() {
         if (canCreate) {
           setCreateError('Failed to load shops');
         }
-      });
+      })
+      .finally(() => setShopsLoaded(true));
   }, [canCreate]);
 
   // Stock is looked up per item rather than preloaded, because a shop can hold
@@ -500,6 +502,7 @@ export function SalesPage() {
             <button
               type="button"
               className="btn btn--primary btn--touch btn--block-mobile"
+              disabled={shopsLoaded && operableShops.length === 0}
               onClick={() => setShowPosForm((current) => !current)}
             >
               {showPosForm ? 'Close POS' : 'New sale'}
@@ -511,7 +514,13 @@ export function SalesPage() {
         </div>
       </header>
 
-      {showPosForm && canCreate && (
+      {canCreate && shopsLoaded && operableShops.length === 0 && (
+        <p className="form__error" role="status">
+          You are not assigned to a shop, so you cannot make sales. Ask the owner to assign you a shop on the Users page.
+        </p>
+      )}
+
+      {showPosForm && canCreate && operableShops.length > 0 && (
         <section className="panel pos-panel">
           <h2>New sale</h2>
           <p className="hint pos-panel__hint">
@@ -738,7 +747,9 @@ export function SalesPage() {
                     ? 'Reduce quantities to match stock at the selected shop.'
                     : stockLoading
                       ? 'Loading stock for the selected shop…'
-                      : 'Select a shop and add at least one product to complete the sale.'}
+                      : shopId
+                        ? 'Add at least one product to complete the sale.'
+                        : 'Select a shop and add at least one product to complete the sale.'}
                 </p>
               )}
             </div>

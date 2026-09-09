@@ -289,6 +289,19 @@ select.input.visually-hidden {
   font-size: 0.875rem;
 }
 
+fieldset.form__field,
+.workspace-split__detail fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+fieldset.form__field legend,
+.workspace-split__detail fieldset legend {
+  padding: 0;
+}
+
 .form__field input:not([type='checkbox']):not([type='radio']),
 .input {
   width: 100%;

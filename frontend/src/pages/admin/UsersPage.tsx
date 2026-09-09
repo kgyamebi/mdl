@@ -1,16 +1,58 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
+import { fetchShops } from '../../services/locationsService';
 import {
   createUser,
   fetchRoles,
   fetchUser,
   fetchUsers,
   updateUser,
+  updateUserLocations,
   updateUserRoles,
   updateUserStatus,
 } from '../../services/usersService';
-import type { CreatedUser, ManagedUser, RoleOption } from '../../types/api';
+import type { CreatedUser, ManagedUser, RoleOption, Shop } from '../../types/api';
 import { formatRoleList, formatRoleName } from '../../utils/formatRoleName';
+
+const SHOP_SELLING_ROLES = new Set(['SHOP_WORKER', 'SHOP_MANAGER', 'SALES_STAFF']);
+
+function rolesNeedShop(roleCodes: string[]): boolean {
+  const roles = roleCodes.length > 0 ? roleCodes : ['SHOP_WORKER'];
+  return roles.some((code) => SHOP_SELLING_ROLES.has(code));
+}
+
+function locationIdsForShops(shops: Shop[], shopIds: number[]): number[] {
+  const ids = new Set<number>();
+  for (const shop of shops) {
+    if (!shopIds.includes(shop.id)) {
+      continue;
+    }
+    if (shop.location?.id) {
+      ids.add(shop.location.id);
+    }
+    if (shop.warehouseLocationId) {
+      ids.add(shop.warehouseLocationId);
+    }
+  }
+  return [...ids];
+}
+
+function assignedShopIds(user: ManagedUser, shops: Shop[]): number[] {
+  const assigned = new Set(user.locations.map((location) => location.locationId));
+  return shops
+    .filter((shop) => shop.location?.id != null && assigned.has(shop.location.id))
+    .map((shop) => shop.id);
+}
+
+function shopNamesForUser(user: ManagedUser): string {
+  const shopLocations = user.locations.filter(
+    (location) => !location.locationType || location.locationType === 'SHOP',
+  );
+  if (shopLocations.length === 0) {
+    return 'None';
+  }
+  return shopLocations.map((location) => location.locationName).join(', ');
+}
 
 export function UsersPage() {
   const { hasPermission } = useAuth();
@@ -31,7 +73,10 @@ export function UsersPage() {
     firstName: '',
     lastName: '',
     roleCodes: [] as string[],
+    shopIds: [] as number[],
   });
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [detailShopIds, setDetailShopIds] = useState<number[]>([]);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -53,28 +98,42 @@ export function UsersPage() {
 
   useEffect(() => {
     fetchRoles().then(setRoles).catch(() => {});
+    fetchShops()
+      .then((shopList) => setShops(shopList.filter((shop) => shop.status === 'ACTIVE')))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (selectedId == null) {
       setSelectedUser(null);
+      setDetailShopIds([]);
       return;
     }
-    fetchUser(selectedId).then(setSelectedUser).catch((err) => {
-      setError(err instanceof Error ? err.message : 'Failed to load user');
-    });
-  }, [selectedId]);
+    fetchUser(selectedId)
+      .then((user) => {
+        setSelectedUser(user);
+        setDetailShopIds(assignedShopIds(user, shops));
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load user');
+      });
+  }, [selectedId, shops]);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
+    if (rolesNeedShop(createForm.roleCodes) && createForm.shopIds.length === 0) {
+      setError('Assign at least one shop so this person can make sales.');
+      return;
+    }
     try {
       const created = await createUser({
         firstName: createForm.firstName.trim(),
         lastName: createForm.lastName.trim(),
         roleCodes: createForm.roleCodes.length > 0 ? createForm.roleCodes : undefined,
+        locationIds: locationIdsForShops(shops, createForm.shopIds),
       });
       setShowCreate(false);
-      setCreateForm({ firstName: '', lastName: '', roleCodes: [] });
+      setCreateForm({ firstName: '', lastName: '', roleCodes: [], shopIds: [] });
       setCreatedCredentials(created);
       setSelectedId(created.id);
       loadUsers();
@@ -115,6 +174,30 @@ export function UsersPage() {
     }
   }
 
+  async function saveShopAssignments() {
+    if (!selectedUser || !canManage) {
+      return;
+    }
+    if (rolesNeedShop(selectedUser.roles) && detailShopIds.length === 0) {
+      setError('Assign at least one shop so this person can make sales.');
+      return;
+    }
+    try {
+      const updated = await updateUserLocations(
+        selectedUser.id,
+        locationIdsForShops(shops, detailShopIds).map((locationId) => ({
+          locationId,
+          accessLevel: 'FULL',
+        })),
+      );
+      setSelectedUser(updated);
+      setDetailShopIds(assignedShopIds(updated, shops));
+      loadUsers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign shops');
+    }
+  }
+
   async function setStatus(status: string) {
     if (!selectedUser || !canManage) {
       return;
@@ -134,7 +217,7 @@ export function UsersPage() {
         <div>
           <p className="eyebrow">Administration</p>
           <h1>Users</h1>
-          <p className="subtitle">Manage team accounts and roles</p>
+          <p className="subtitle">Manage team accounts, roles, and which shop they sell from</p>
         </div>
         {canManage && (
           <div className="page__header-actions">
@@ -183,7 +266,7 @@ export function UsersPage() {
       {showCreate && canManage && (
         <section className="panel">
           <h2>Create user</h2>
-          <p className="muted">Enter the person&apos;s name. Email, username, and password are generated automatically.</p>
+          <p className="muted">Enter the person&apos;s name and the shop they work at. Email, username, and password are generated automatically.</p>
           <form className="form form--touch-friendly" onSubmit={handleCreate}>
             <label className="form__field">
               <span>First name</span>
@@ -214,6 +297,29 @@ export function UsersPage() {
               </div>
               <p className="muted">Defaults to Shop worker if none selected.</p>
             </div>
+            <fieldset className="form__field form__field--wide">
+              <legend>Shops they can sell from</legend>
+              <div className="role-grid">
+                {shops.map((shop) => (
+                  <label key={shop.id} className="checkbox">
+                    <input
+                      type="checkbox"
+                      checked={createForm.shopIds.includes(shop.id)}
+                      onChange={() => {
+                        const next = createForm.shopIds.includes(shop.id)
+                          ? createForm.shopIds.filter((id) => id !== shop.id)
+                          : [...createForm.shopIds, shop.id];
+                        setCreateForm({ ...createForm, shopIds: next });
+                      }}
+                    />
+                    {shop.name}
+                  </label>
+                ))}
+              </div>
+              <p className="muted">
+                Required for shop workers. They can look up stock at every shop, but can only complete sales at assigned shops.
+              </p>
+            </fieldset>
             <div className="form__field form__field--wide">
               <button type="submit" className="btn btn--primary">Create user</button>
             </div>
@@ -229,7 +335,7 @@ export function UsersPage() {
           <div className="workspace-split__list">
             <div className="table-wrap table-wrap--stacked table-wrap--scroll-hint">
               <table className="table table--stacked">
-                <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Roles</th></tr></thead>
+                <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Roles</th><th>Shops</th></tr></thead>
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className={`table__row--clickable${selectedId === user.id ? ' table__row--selected' : ''}`} onClick={() => setSelectedId(user.id)}>
@@ -237,6 +343,7 @@ export function UsersPage() {
                       <td>{user.email}</td>
                       <td>{user.status}</td>
                       <td>{formatRoleList(user.roles)}</td>
+                      <td>{shopNamesForUser(user)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -269,6 +376,30 @@ export function UsersPage() {
                       </label>
                     ))}
                   </div>
+                  <fieldset>
+                    <legend className="panel__subheading">Shops they can sell from</legend>
+                    <div className="role-grid">
+                      {shops.map((shop) => (
+                        <label key={shop.id} className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={detailShopIds.includes(shop.id)}
+                            onChange={() => {
+                              setDetailShopIds((current) =>
+                                current.includes(shop.id)
+                                  ? current.filter((id) => id !== shop.id)
+                                  : [...current, shop.id],
+                              );
+                            }}
+                          />
+                          {shop.name}
+                        </label>
+                      ))}
+                    </div>
+                    <button type="button" className="btn btn--ghost" onClick={saveShopAssignments}>
+                      Save shop assignment
+                    </button>
+                  </fieldset>
                   <h3 className="panel__subheading">Status</h3>
                   <div className="page__header-actions">
                     {selectedUser.status !== 'ACTIVE' && <button type="button" className="btn btn--ghost" onClick={() => setStatus('ACTIVE')}>Activate</button>}

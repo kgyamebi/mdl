@@ -15,7 +15,11 @@ test.describe('Owner', () => {
     await expectNavLink(page, 'Locations', true);
   });
 
-  test('can open operational pages without errors', async ({ page }) => {
+  test('can assign a shop when creating a user', async ({ page }) => {
+    await openPageFromNav(page, 'Users', 'Users');
+    await page.getByRole('button', { name: 'New user' }).click();
+    await expect(page.getByRole('group', { name: 'Shops they can sell from' }).getByRole('checkbox').first()).toBeVisible();
+  });
     await openPageFromNav(page, 'Inventory', 'Inventory balances');
     await openPageFromNav(page, 'Sales', 'Sales');
     await openPageFromNav(page, 'Transfers', 'Stock transfers');
@@ -107,5 +111,6 @@ test.describe('Shop worker', () => {
     await page.getByRole('button', { name: 'New sale' }).click();
     await expect(page.getByRole('heading', { name: 'New sale', level: 2 })).toBeVisible();
     await expect(page.locator('.form__error').filter({ hasText: /Failed to load/i })).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: 'Sale shop' }).getByRole('tab')).not.toHaveCount(0);
   });
 });
