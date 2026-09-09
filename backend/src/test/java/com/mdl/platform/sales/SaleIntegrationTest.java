@@ -68,7 +68,7 @@ class SaleIntegrationTest {
     @Test
     void workerCanCompleteSaleAndManagerCanCancel() throws Exception {
         long shopId = findShopId(ownerToken, "SHOP-A");
-        long shopWarehouseLocationId = findLocationId(ownerToken, "LOC-WH-A");
+        long shopWarehouseLocationId = findLocationId(ownerToken, "LOC-SHOP-A");
         long productId = findProductId(ownerToken, "MDL-LED-001");
         BigDecimal unitPrice = findProductPrice(ownerToken, "MDL-LED-001");
 

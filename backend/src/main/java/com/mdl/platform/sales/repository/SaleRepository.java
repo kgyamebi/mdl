@@ -19,6 +19,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             SELECT s FROM Sale s
             WHERE s.businessId = :businessId
               AND (:status IS NULL OR s.status = :status)
+              AND (:shopId IS NULL OR s.shopId = :shopId)
               AND (
                     s.shopLocationId IN :locationIds
                     OR s.warehouseLocationId IN :locationIds
@@ -31,5 +32,6 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             @Param("locationIds") java.util.List<Long> locationIds,
             @Param("viewAll") boolean viewAll,
             @Param("status") String status,
+            @Param("shopId") Long shopId,
             Pageable pageable);
 }

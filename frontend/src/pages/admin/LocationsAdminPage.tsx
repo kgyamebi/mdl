@@ -13,6 +13,7 @@ import {
   updateTransferRoute,
 } from '../../services/locationsService';
 import type { BusinessStructure, TransferRoute, Warehouse } from '../../types/api';
+import { formatLocationLabel } from '../../utils/formatLocationLabel';
 
 export function LocationsAdminPage() {
   const { hasPermission } = useAuth();
@@ -240,7 +241,7 @@ export function LocationsAdminPage() {
               <select className="input" required value={routeForm.fromWarehouseId} onChange={(e) => setRouteForm({ ...routeForm, fromWarehouseId: e.target.value })}>
                 <option value="">Select…</option>
                 {allWarehouses.map((w) => (
-                  <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                  <option key={w.id} value={w.id}>{w.code} — {formatLocationLabel(w.name)}</option>
                 ))}
               </select>
             </label>
@@ -249,7 +250,7 @@ export function LocationsAdminPage() {
               <select className="input" required value={routeForm.toWarehouseId} onChange={(e) => setRouteForm({ ...routeForm, toWarehouseId: e.target.value })}>
                 <option value="">Select…</option>
                 {allWarehouses.map((w) => (
-                  <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                  <option key={w.id} value={w.id}>{w.code} — {formatLocationLabel(w.name)}</option>
                 ))}
               </select>
             </label>
@@ -275,7 +276,7 @@ export function LocationsAdminPage() {
                     <li key={w.id} className="list__item list__item--actions">
                       <div>
                         <strong>{w.code}</strong>
-                        <span className="muted">{w.name}</span>
+                        <span className="muted">{formatLocationLabel(w.name)}</span>
                       </div>
                       {canManage && (
                         <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeWarehouse(w.id, w.name)}>
@@ -284,6 +285,28 @@ export function LocationsAdminPage() {
                       )}
                     </li>
                   ))}
+                </ul>
+              </div>
+              <div>
+                <h3 className="panel__subheading">Shop warehouses</h3>
+                <ul className="list">
+                  {structure.shopWarehouses.length === 0 ? (
+                    <li className="list__item muted">None yet</li>
+                  ) : (
+                    structure.shopWarehouses.map((w) => (
+                      <li key={w.id} className="list__item list__item--actions">
+                        <div>
+                          <strong>{w.code}</strong>
+                          <span className="muted">{formatLocationLabel(w.name)}</span>
+                        </div>
+                        {canManage && (
+                          <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeWarehouse(w.id, w.name)}>
+                            Remove
+                          </button>
+                        )}
+                      </li>
+                    ))
+                  )}
                 </ul>
               </div>
               <div>
@@ -322,17 +345,19 @@ export function LocationsAdminPage() {
                 <tbody>
                   {routes.map((route) => (
                     <tr key={route.id}>
-                      <td>{route.fromWarehouseCode}</td>
-                      <td>{route.toWarehouseCode}</td>
-                      <td>{route.enabled ? 'Enabled' : 'Disabled'}</td>
+                      <td data-label="From">{route.fromWarehouseCode}</td>
+                      <td data-label="To">{route.toWarehouseCode}</td>
+                      <td data-label="Status">{route.enabled ? 'Enabled' : 'Disabled'}</td>
                       {canManage && (
-                        <td>
-                          <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleRoute(route)}>
-                            {route.enabled ? 'Disable' : 'Enable'}
-                          </button>
-                          <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeRoute(route.id)}>
-                            Delete
-                          </button>
+                        <td data-label="Actions">
+                          <div className="table-actions">
+                            <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleRoute(route)}>
+                              {route.enabled ? 'Disable' : 'Enable'}
+                            </button>
+                            <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeRoute(route.id)}>
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>

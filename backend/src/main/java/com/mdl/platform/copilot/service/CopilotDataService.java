@@ -136,6 +136,9 @@ public class CopilotDataService {
                 null,
                 null,
                 true,
+                false,
+                null,
+                null,
                 PageRequest.of(0, MAX_LIST_ITEMS));
 
         if (page.isEmpty()) {
@@ -249,6 +252,9 @@ public class CopilotDataService {
                 null,
                 null,
                 false,
+                false,
+                null,
+                null,
                 PageRequest.of(0, MAX_LIST_ITEMS));
 
         if (page.isEmpty()) {
@@ -364,7 +370,8 @@ public class CopilotDataService {
         }
 
         long totalRows = balanceRepository.search(
-                context.businessId(), locationIds, null, null, null, false, PageRequest.of(0, 1)).getTotalElements();
+                context.businessId(), locationIds, null, null, null, false, false, null, null,
+                PageRequest.of(0, 1)).getTotalElements();
         long lowStock = balanceRepository.countLowStock(context.businessId(), locationIds);
 
         return "Stock summary for your locations: "
@@ -549,7 +556,7 @@ public class CopilotDataService {
     }
 
     private List<Long> accessibleLocationIds(UserContext context) {
-        return locationAccessService.getAccessibleLocations(context).stream()
+        return locationAccessService.getViewableLocations(context).stream()
                 .map(Location::getId)
                 .toList();
     }
@@ -563,14 +570,14 @@ public class CopilotDataService {
     }
 
     private Location findLocation(UserContext context, Long locationId) {
-        return locationAccessService.getAccessibleLocations(context).stream()
+        return locationAccessService.getViewableLocations(context).stream()
                 .filter(location -> location.getId().equals(locationId))
                 .findFirst()
                 .orElse(null);
     }
 
     private Location resolveLocationFromMessage(UserContext context, String normalized) {
-        List<Location> locations = locationAccessService.getAccessibleLocations(context);
+        List<Location> locations = locationAccessService.getViewableLocations(context);
         for (Location location : locations) {
             if (normalized.contains(location.getName().toLowerCase(Locale.ROOT))) {
                 return location;

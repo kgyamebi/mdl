@@ -190,8 +190,8 @@ export function DashboardPage() {
                 </Link>
               )}
               {hasPermission('copilot:use') && (
-                <Link to="/copilot" className="btn btn--primary">
-                  Ask MDL AI Assistant 💬
+                <Link to="/copilot" className="btn btn--primary dashboard-welcome__copilot">
+                  Ask MDL AI Assistant
                 </Link>
               )}
             </div>

@@ -7,6 +7,7 @@ import com.mdl.platform.inventory.dto.CreateAdjustmentRequestRequest;
 import com.mdl.platform.inventory.dto.CreateDamageReportRequest;
 import com.mdl.platform.inventory.dto.CreateInventoryAdjustmentRequest;
 import com.mdl.platform.inventory.dto.CreateReservationRequest;
+import com.mdl.platform.inventory.dto.InventoryBalanceFilter;
 import com.mdl.platform.inventory.dto.InventoryBalanceResponse;
 import com.mdl.platform.inventory.dto.InventorySummaryResponse;
 import com.mdl.platform.inventory.dto.InventoryTransactionResponse;
@@ -33,6 +34,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/inventory")
@@ -68,10 +71,14 @@ public class InventoryController {
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "false") boolean lowStockOnly,
+            @RequestParam(defaultValue = "false") boolean negativeStockOnly,
+            @RequestParam(required = false) BigDecimal minQuantity,
+            @RequestParam(required = false) BigDecimal maxQuantity,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                queryService.listBalances(locationId, productId, search, lowStockOnly, page, size)));
+        InventoryBalanceFilter filter = new InventoryBalanceFilter(
+                locationId, productId, search, lowStockOnly, negativeStockOnly, minQuantity, maxQuantity);
+        return ResponseEntity.ok(ApiResponse.ok(queryService.listBalances(filter, page, size)));
     }
 
     @GetMapping("/balances/{id}")

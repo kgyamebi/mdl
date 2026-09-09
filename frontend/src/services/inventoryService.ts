@@ -10,6 +10,9 @@ export function fetchInventoryBalances(params: {
   productId?: number;
   search?: string;
   lowStockOnly?: boolean;
+  negativeStockOnly?: boolean;
+  minQuantity?: number;
+  maxQuantity?: number;
   page?: number;
   size?: number;
 }): Promise<PageResponse<InventoryBalance>> {
@@ -25,6 +28,15 @@ export function fetchInventoryBalances(params: {
   }
   if (params.lowStockOnly) {
     query.set('lowStockOnly', 'true');
+  }
+  if (params.negativeStockOnly) {
+    query.set('negativeStockOnly', 'true');
+  }
+  if (params.minQuantity != null && Number.isFinite(params.minQuantity)) {
+    query.set('minQuantity', String(params.minQuantity));
+  }
+  if (params.maxQuantity != null && Number.isFinite(params.maxQuantity)) {
+    query.set('maxQuantity', String(params.maxQuantity));
   }
   query.set('page', String(params.page ?? 0));
   query.set('size', String(params.size ?? 20));

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,7 +45,10 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
                     :lowStockOnly = false
                     OR (p.reorderLevel IS NOT NULL AND ib.quantityOnHand <= p.reorderLevel)
                   )
-            ORDER BY ib.locationId ASC, p.name ASC
+              AND (:negativeStockOnly = false OR ib.quantityOnHand < 0)
+              AND (:minQuantity IS NULL OR ib.quantityOnHand >= :minQuantity)
+              AND (:maxQuantity IS NULL OR ib.quantityOnHand <= :maxQuantity)
+            ORDER BY p.name ASC, ib.locationId ASC
             """)
     Page<InventoryBalance> search(
             @Param("businessId") Long businessId,
@@ -53,6 +57,9 @@ public interface InventoryBalanceRepository extends JpaRepository<InventoryBalan
             @Param("productId") Long productId,
             @Param("search") String search,
             @Param("lowStockOnly") boolean lowStockOnly,
+            @Param("negativeStockOnly") boolean negativeStockOnly,
+            @Param("minQuantity") BigDecimal minQuantity,
+            @Param("maxQuantity") BigDecimal maxQuantity,
             Pageable pageable);
 
     List<InventoryBalance> findByBusinessIdAndProductIdAndLocationIdIn(

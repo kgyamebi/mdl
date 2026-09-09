@@ -151,6 +151,9 @@ public class ReportExportService {
                 null,
                 null,
                 lowStockOnly,
+                false,
+                null,
+                null,
                 PageRequest.of(0, MAX_INVENTORY_EXPORT_ROWS));
 
         Map<Long, Location> locations = loadLocations(context.businessId(), balances.getContent());
@@ -260,6 +263,9 @@ public class ReportExportService {
                 null,
                 null,
                 lowStockOnly,
+                false,
+                null,
+                null,
                 PageRequest.of(0, MAX_INVENTORY_EXPORT_ROWS));
 
         Map<Long, Location> locations = loadLocations(context.businessId(), balances.getContent());

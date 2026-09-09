@@ -336,6 +336,9 @@ public class StocktakeService {
                 null,
                 "",
                 false,
+                false,
+                null,
+                null,
                 PageRequest.of(0, 500));
 
         int count = 0;

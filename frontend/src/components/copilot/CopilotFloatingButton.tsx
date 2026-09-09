@@ -55,10 +55,13 @@ function getBottomNavHeight(): number {
     return 0;
   }
   const nav = document.querySelector('.layout__bottom-nav');
-  if (!nav || getComputedStyle(nav).display === 'none') {
-    return 0;
+  if (nav && getComputedStyle(nav).display !== 'none') {
+    return Math.max(nav.getBoundingClientRect().height, 56);
   }
-  return nav.getBoundingClientRect().height;
+  if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+    return 64;
+  }
+  return 0;
 }
 
 function getStickyFooterHeight(): number {
@@ -73,7 +76,7 @@ function getStickyFooterHeight(): number {
 }
 
 function getBottomInset(): number {
-  const margin = 12;
+  const margin = 16;
   const navHeight = getBottomNavHeight();
   if (navHeight > 0) {
     return navHeight + margin;
@@ -308,7 +311,8 @@ export function CopilotFloatingButton() {
     >
       <span className="copilot-fab__glow" aria-hidden="true" />
       <span className="copilot-fab__content">
-        <strong className="copilot-fab__label">Ask MDL AI Assistant</strong>
+        <strong className="copilot-fab__label copilot-fab__label--full">Ask MDL AI Assistant</strong>
+        <strong className="copilot-fab__label copilot-fab__label--short">Ask MDL</strong>
         <span className="copilot-fab__emoji" aria-hidden="true">
           {' '}
           💬

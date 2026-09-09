@@ -11,10 +11,8 @@ import com.mdl.platform.common.exception.NotFoundException;
 import com.mdl.platform.inventory.service.InventoryLedgerService;
 import com.mdl.platform.locations.entity.Location;
 import com.mdl.platform.locations.entity.Shop;
-import com.mdl.platform.locations.entity.Warehouse;
 import com.mdl.platform.locations.repository.LocationRepository;
 import com.mdl.platform.locations.repository.ShopRepository;
-import com.mdl.platform.locations.repository.WarehouseRepository;
 import com.mdl.platform.products.entity.Product;
 import com.mdl.platform.products.repository.ProductRepository;
 import com.mdl.platform.security.UserContext;
@@ -57,7 +55,6 @@ public class SaleService {
     private final SaleItemRepository saleItemRepository;
     private final SalePaymentRepository salePaymentRepository;
     private final ShopRepository shopRepository;
-    private final WarehouseRepository warehouseRepository;
     private final LocationRepository locationRepository;
     private final ProductRepository productRepository;
     private final BusinessRepository businessRepository;
@@ -71,7 +68,6 @@ public class SaleService {
             SaleItemRepository saleItemRepository,
             SalePaymentRepository salePaymentRepository,
             ShopRepository shopRepository,
-            WarehouseRepository warehouseRepository,
             LocationRepository locationRepository,
             ProductRepository productRepository,
             BusinessRepository businessRepository,
@@ -83,7 +79,6 @@ public class SaleService {
         this.saleItemRepository = saleItemRepository;
         this.salePaymentRepository = salePaymentRepository;
         this.shopRepository = shopRepository;
-        this.warehouseRepository = warehouseRepository;
         this.locationRepository = locationRepository;
         this.productRepository = productRepository;
         this.businessRepository = businessRepository;
@@ -191,7 +186,7 @@ public class SaleService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<SaleResponse> listSales(String status, int page, int size) {
+    public PageResponse<SaleResponse> listSales(String status, Long shopId, int page, int size) {
         authorizationService.requirePermission("sale:view");
         UserContext context = authorizationService.requireAuthenticated();
 
@@ -205,6 +200,7 @@ public class SaleService {
                 locationIds.isEmpty() ? List.of(-1L) : locationIds,
                 viewAll,
                 normalizeStatus(status),
+                shopId,
                 PageRequest.of(Math.max(page, 0), Math.max(size, 1)));
 
         return toPageResponse(context, result);
@@ -323,19 +319,13 @@ public class SaleService {
         if (!"ACTIVE".equals(shop.getStatus())) {
             throw new ConflictException("Shop is not active");
         }
-        if (shop.getWarehouseId() == null) {
-            throw new ConflictException("Shop has no linked warehouse for stock deduction");
-        }
-
         locationAccessService.requireLocationAccess(context, shop.getLocationId());
 
-        Warehouse warehouse = warehouseRepository.findByIdAndBusinessId(shop.getWarehouseId(), context.businessId())
-                .orElseThrow(() -> new NotFoundException("Shop warehouse not found"));
-        Location warehouseLocation = locationRepository.findByIdAndBusinessId(
-                        warehouse.getLocationId(), context.businessId())
-                .orElseThrow(() -> new NotFoundException("Warehouse location not found"));
+        Location shopLocation = locationRepository.findByIdAndBusinessId(
+                        shop.getLocationId(), context.businessId())
+                .orElseThrow(() -> new NotFoundException("Shop location not found"));
 
-        return new ShopContext(shop, warehouseLocation);
+        return new ShopContext(shop, shopLocation);
     }
 
     private String generateSaleNumber(Long businessId) {

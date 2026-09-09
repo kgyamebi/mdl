@@ -34,12 +34,10 @@ export function MobileBottomNav({
           <span className="layout__bottom-nav-icon" aria-hidden="true">
             {item.icon ?? '•'}
           </span>
-          <span className="layout__bottom-nav-label">
-            {item.shortLabel}
-            {item.to === '/notifications' && unreadCount > 0 && (
-              <span className="nav-badge nav-badge--bottom">{unreadCount > 99 ? '99+' : unreadCount}</span>
-            )}
-          </span>
+          <span className="layout__bottom-nav-label">{item.shortLabel}</span>
+          {item.to === '/notifications' && unreadCount > 0 && (
+            <span className="nav-badge nav-badge--bottom">{unreadCount > 99 ? '99+' : unreadCount}</span>
+          )}
         </NavLink>
       ))}
       {showMore && (

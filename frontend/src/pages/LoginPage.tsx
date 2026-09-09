@@ -113,9 +113,10 @@ export function LoginPage() {
           </button>
         </form>
 
-        {!mfaToken && (
+        {!mfaToken && import.meta.env.DEV && (
           <p className="hint auth-card__hint">
-            Demo: owner@mdl.local / Owner@123! · manager: michael@mdl.local / Manager@123!
+            <span>Owner: owner@mdl.local / Owner@123!</span>
+            <span>Manager: michael@mdl.local / Manager@123!</span>
           </p>
         )}
 

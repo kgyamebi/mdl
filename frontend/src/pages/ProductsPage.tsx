@@ -312,7 +312,19 @@ export function ProductsPage() {
       )}
 
       <div className="toolbar">
-        <input type="search" className="input" placeholder="Search SKU, name, or brand…" value={search} onChange={(e) => { setPage(0); setSearch(e.target.value); }} />
+        <label className="filter-field filter-field--grow">
+          <span className="filter-field__label">Search</span>
+          <input
+            type="search"
+            className="input"
+            placeholder="SKU, name, or brand…"
+            value={search}
+            onChange={(e) => {
+              setPage(0);
+              setSearch(e.target.value);
+            }}
+          />
+        </label>
       </div>
 
       {loading && <p className="muted">Loading products…</p>}
@@ -324,7 +336,7 @@ export function ProductsPage() {
             <div className="table-wrap table-wrap--stacked">
               <table className="table table--stacked">
                 <thead>
-                  <tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Status</th></tr>
+                  <tr><th>SKU</th><th>Product</th><th>Category</th><th className="num">Price</th><th>Status</th></tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
@@ -339,7 +351,7 @@ export function ProductsPage() {
                         <td data-label="SKU"><strong>{product.sku}</strong></td>
                         <td data-label="Product"><strong>{product.name}</strong>{product.brand && <div className="muted">{product.brand}</div>}</td>
                         <td data-label="Category">{product.categoryName ?? '—'}</td>
-                        <td data-label="Price">{formatMoney(product.sellingPrice, product.currencyCode || currencyCode)}</td>
+                        <td data-label="Price" className="num">{formatMoney(product.sellingPrice, product.currencyCode || currencyCode)}</td>
                         <td data-label="Status"><span className={`pill ${product.status === 'ACTIVE' ? 'pill--ok' : 'pill--warning'}`}>{product.status}</span></td>
                       </tr>
                     ))

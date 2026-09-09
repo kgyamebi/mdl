@@ -3,12 +3,16 @@ import type { PageResponse, PaymentMethod, Sale } from '../types/api';
 
 export function fetchSales(params: {
   status?: string;
+  shopId?: number;
   page?: number;
   size?: number;
 }): Promise<PageResponse<Sale>> {
   const query = new URLSearchParams();
   if (params.status) {
     query.set('status', params.status);
+  }
+  if (params.shopId != null) {
+    query.set('shopId', String(params.shopId));
   }
   query.set('page', String(params.page ?? 0));
   query.set('size', String(params.size ?? 20));

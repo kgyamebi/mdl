@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { DetailCloseButton } from '../components/layout/DetailCloseButton';
+import { ProductSearchSelect } from '../components/products/ProductSearchSelect';
 import { SaleActionPanel } from '../components/sales/SaleActionPanel';
 import { fetchInventoryBalances } from '../services/inventoryService';
 import { fetchShops } from '../services/locationsService';
-import { fetchProducts, lookupProductByBarcode } from '../services/productsService';
+import { lookupProductByBarcode } from '../services/productsService';
 import { createSale, fetchSale, fetchSales } from '../services/salesService';
-import type { InventoryBalance, PaymentMethod, Product, Sale, Shop } from '../types/api';
+import type { PaymentMethod, Product, Sale, Shop } from '../types/api';
 import { printSaleReceipt } from '../utils/printReceipt';
 
 const STATUS_FILTERS: Array<{ value: string; label: string }> = [
@@ -92,6 +93,7 @@ export function SalesPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [listShopId, setListShopId] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -101,12 +103,11 @@ export function SalesPage() {
 
   const [showPosForm, setShowPosForm] = useState(false);
   const [shops, setShops] = useState<Shop[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [shopId, setShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
   const [barcodeInput, setBarcodeInput] = useState('');
-  const [manualProductId, setManualProductId] = useState('');
+  const [manualProduct, setManualProduct] = useState<Product | null>(null);
   const [manualQuantity, setManualQuantity] = useState('1');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [paymentReference, setPaymentReference] = useState('');
@@ -114,7 +115,10 @@ export function SalesPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
-  const [warehouseStock, setWarehouseStock] = useState<Map<number, InventoryBalance>>(new Map());
+  // productId -> available quantity at the selected shop. A present key means the
+  // balance has been checked, so a missing row can be reported as zero rather than
+  // being confused with "not looked up yet".
+  const [stockAvailable, setStockAvailable] = useState<Map<number, number>>(new Map());
   const [stockLoading, setStockLoading] = useState(false);
 
   const selectedShop = useMemo(
@@ -122,21 +126,21 @@ export function SalesPage() {
     [shopId, shops],
   );
 
-  const selectedManualProduct = useMemo(
-    () => products.find((product) => product.id === Number(manualProductId)) ?? null,
-    [manualProductId, products],
+  const operableShops = useMemo(
+    () => shops.filter((shop) => shop.canOperate !== false),
+    [shops],
   );
 
-  const stockByProductId = useMemo(() => {
-    const map = new Map<number, number>();
-    warehouseStock.forEach((balance) => {
-      map.set(balance.productId, balance.quantityAvailable);
-    });
-    return map;
-  }, [warehouseStock]);
+  // Sales deduct from the shop floor. Imported stock lives there, not in the
+  // linked shop warehouse (those start empty until a physical count).
+  const shopStockLocationId = selectedShop?.location?.id ?? selectedShop?.warehouseLocationId;
+
+  function isStockChecked(productId: number): boolean {
+    return stockAvailable.has(productId);
+  }
 
   function getAvailableStock(productId: number): number {
-    return stockByProductId.get(productId) ?? 0;
+    return stockAvailable.get(productId) ?? 0;
   }
 
   function getCartQuantityForProduct(productId: number): number {
@@ -150,20 +154,18 @@ export function SalesPage() {
     return Math.max(0, getAvailableStock(productId) - getCartQuantityForProduct(productId));
   }
 
-  function formatStockHint(productId: number): string {
+  function formatStockHint(product: Product): string {
     if (!shopId) {
       return '';
     }
-    const balance = warehouseStock.get(productId);
-    if (!balance) {
-      return 'No stock at this shop';
+    if (!isStockChecked(product.id)) {
+      return '';
     }
-    const remaining = getRemainingStock(productId);
-    const unit = formatUnitLabel(balance.unitOfMeasure);
+    const remaining = getRemainingStock(product.id);
     if (remaining <= 0) {
       return 'Out of stock at this shop';
     }
-    return `${formatQty(remaining)} ${unit} available`;
+    return `${formatQty(remaining)} ${formatUnitLabel(product.unitOfMeasure)} available`;
   }
 
   const cartTotal = useMemo(
@@ -178,6 +180,7 @@ export function SalesPage() {
     try {
       const response = await fetchSales({
         status: statusFilter || undefined,
+        shopId: listShopId ? Number(listShopId) : undefined,
         page,
         size: 20,
       });
@@ -189,7 +192,7 @@ export function SalesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter]);
+  }, [page, statusFilter, listShopId]);
 
   useEffect(() => {
     loadSales();
@@ -227,61 +230,80 @@ export function SalesPage() {
   }, [selectedId]);
 
   useEffect(() => {
-    if (!canCreate || !showPosForm) {
-      return;
-    }
-
-    Promise.all([fetchShops(), fetchProducts({ size: 100 })])
-      .then(([shopList, productPage]) => {
-        setShops(shopList);
-        setProducts(productPage.items);
-        if (shopList.length === 1) {
-          setShopId(String(shopList[0].id));
+    fetchShops()
+      .then((shopList) => {
+        const active = shopList.filter((shop) => shop.status === 'ACTIVE');
+        setShops(active);
+        const operable = active.filter((shop) => shop.canOperate !== false);
+        if (canCreate && operable.length === 1) {
+          setShopId(String(operable[0].id));
         }
       })
       .catch(() => {
-        setCreateError('Failed to load shops or products');
+        if (canCreate) {
+          setCreateError('Failed to load shops');
+        }
       });
-  }, [canCreate, showPosForm]);
+  }, [canCreate]);
 
+  // Stock is looked up per item rather than preloaded, because a shop can hold
+  // thousands of balance rows.
   useEffect(() => {
-    if (!showPosForm || !selectedShop?.warehouseLocationId) {
-      setWarehouseStock(new Map());
-      return;
-    }
+    setStockAvailable(new Map());
+  }, [shopStockLocationId]);
 
-    let cancelled = false;
-    setStockLoading(true);
+  // Pull stock for a whole batch of search results in one request, so the cashier
+  // can see availability while scanning the suggestion list.
+  const loadStockForResults = useCallback(
+    (products: Product[], term: string) => {
+      const locationId = shopStockLocationId;
+      if (!locationId || products.length === 0) {
+        return;
+      }
 
-    fetchInventoryBalances({
-      locationId: selectedShop.warehouseLocationId,
-      size: 200,
-    })
-      .then((response) => {
-        if (cancelled) {
-          return;
-        }
-        const next = new Map<number, InventoryBalance>();
-        response.items.forEach((balance) => {
-          next.set(balance.productId, balance);
-        });
-        setWarehouseStock(next);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setWarehouseStock(new Map());
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setStockLoading(false);
-        }
-      });
+      fetchInventoryBalances({ locationId, search: term, size: 50 })
+        .then((response) => {
+          setStockAvailable((current) => {
+            const next = new Map(current);
+            // Anything the search returned but the balance query didn't has no
+            // row at this shop, which means none in stock.
+            products.forEach((product) => {
+              if (!next.has(product.id)) {
+                next.set(product.id, 0);
+              }
+            });
+            response.items.forEach((balance) => {
+              next.set(balance.productId, balance.quantityAvailable);
+            });
+            return next;
+          });
+        })
+        .catch(() => {});
+    },
+    [shopStockLocationId],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [showPosForm, selectedShop?.warehouseLocationId]);
+  const loadStockFor = useCallback(
+    async (productId: number): Promise<number | null> => {
+      const locationId = shopStockLocationId;
+      if (!locationId) {
+        return null;
+      }
+
+      setStockLoading(true);
+      try {
+        const response = await fetchInventoryBalances({ locationId, productId, size: 1 });
+        const available = response.items[0]?.quantityAvailable ?? 0;
+        setStockAvailable((current) => new Map(current).set(productId, available));
+        return available;
+      } catch {
+        return null;
+      } finally {
+        setStockLoading(false);
+      }
+    },
+    [shopStockLocationId],
+  );
 
   const stockIssues = useMemo(() => {
     if (!shopId || cartLines.length === 0) {
@@ -310,7 +332,7 @@ export function SalesPage() {
       }
     });
     return issues;
-  }, [cartLines, shopId, stockByProductId]);
+  }, [cartLines, shopId, stockAvailable]);
 
   const canSubmitSale =
     Boolean(shopId) &&
@@ -320,31 +342,24 @@ export function SalesPage() {
     stockIssues.length === 0 &&
     !stockLoading;
 
-  function stockErrorForProduct(product: Product, requestedQty: number): string | null {
-    const inCart = getCartQuantityForProduct(product.id);
-    const available = getAvailableStock(product.id);
-    const remaining = available - inCart;
-    const unit = formatUnitLabel(
-      warehouseStock.get(product.id)?.unitOfMeasure ?? product.unitOfMeasure,
-    );
-
-    if (requestedQty > remaining) {
-      return remaining > 0
-        ? `Only ${formatQty(remaining)} ${unit} of ${product.sku} available at this shop.`
-        : `${product.sku} is out of stock at this shop.`;
-    }
-    return null;
-  }
-
-  function addProductToCart(product: Product, qty: number) {
+  async function addProductToCart(product: Product, qty: number) {
     if (!shopId) {
       setCreateError('Select a shop before adding products.');
       return;
     }
 
-    const stockError = stockErrorForProduct(product, qty);
-    if (stockError) {
-      setCreateError(stockError);
+    const available = isStockChecked(product.id)
+      ? getAvailableStock(product.id)
+      : ((await loadStockFor(product.id)) ?? 0);
+
+    const remaining = available - getCartQuantityForProduct(product.id);
+    if (qty > remaining) {
+      const unit = formatUnitLabel(product.unitOfMeasure);
+      setCreateError(
+        remaining > 0
+          ? `Only ${formatQty(remaining)} ${unit} of ${product.sku} available at this shop.`
+          : `${product.sku} is out of stock at this shop.`,
+      );
       return;
     }
 
@@ -384,22 +399,21 @@ export function SalesPage() {
     setBarcodeError(null);
     try {
       const product = await lookupProductByBarcode(trimmed);
-      addProductToCart(product, 1);
+      await addProductToCart(product, 1);
       setBarcodeInput('');
     } catch (err) {
       setBarcodeError(err instanceof Error ? err.message : 'Product not found');
     }
   }
 
-  function handleManualAddClick() {
-    const product = products.find((entry) => entry.id === Number(manualProductId));
+  async function handleManualAddClick() {
     const qty = Number(manualQuantity);
-    if (!product || !Number.isFinite(qty) || qty <= 0) {
-      setCreateError('Select a product and enter a quantity greater than zero.');
+    if (!manualProduct || !Number.isFinite(qty) || qty <= 0) {
+      setCreateError('Find an item and enter a quantity greater than zero.');
       return;
     }
-    addProductToCart(product, qty);
-    setManualProductId('');
+    await addProductToCart(manualProduct, qty);
+    setManualProduct(null);
     setManualQuantity('1');
   }
 
@@ -459,7 +473,7 @@ export function SalesPage() {
       setCustomerName('');
       setCartLines([]);
       setBarcodeInput('');
-      setManualProductId('');
+      setManualProduct(null);
       setManualQuantity('1');
       setPaymentMethod('CASH');
       setPaymentReference('');
@@ -504,55 +518,79 @@ export function SalesPage() {
             Required: shop, at least one product, and payment method. Everything else is optional.
           </p>
           <form className="form form--grid form--touch-friendly pos-form" onSubmit={handleCreate} noValidate>
-            <label className="form__field">
+            <div className="form__field">
               <span>Shop <em className="field-required">(required)</em></span>
+              <div className="shop-switcher" role="tablist" aria-label="Sale shop">
+                {operableShops.map((shop) => (
+                  <button
+                    key={shop.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={shopId === String(shop.id)}
+                    className={`shop-switcher__tab${shopId === String(shop.id) ? ' shop-switcher__tab--active' : ''}`}
+                    onClick={() => {
+                      setShopId(String(shop.id));
+                      setCreateError(null);
+                    }}
+                  >
+                    {shop.name}
+                  </button>
+                ))}
+              </div>
               <select
-                className="input"
+                className="input visually-hidden"
                 value={shopId}
+                aria-label="Shop"
                 onChange={(e) => {
                   setShopId(e.target.value);
                   setCreateError(null);
                 }}
               >
                 <option value="">Select shop…</option>
-                {shops.map((shop) => (
+                {operableShops.map((shop) => (
                   <option key={shop.id} value={shop.id}>{shop.code} — {shop.name}</option>
                 ))}
               </select>
               {selectedShop && (
                 <span className="hint">
-                  Stock checked at {selectedShop.warehouseName}
+                  Stock checked at {selectedShop.name}
                   {stockLoading ? ' · loading…' : ''}
                 </span>
               )}
-            </label>
+            </div>
 
             <div className="form__field form__field--wide pos-form__add-product">
               <span>Add product <em className="field-required">(required)</em></span>
               <div className="pos-add-product">
-                <label className="pos-add-product__field">
-                  <span className="pos-add-product__label">Product</span>
-                  <select
-                    className="input"
-                    value={manualProductId}
-                    onChange={(e) => setManualProductId(e.target.value)}
-                  >
-                    <option value="">Select product…</option>
-                    {products.map((product) => {
-                      const stockHint = shopId ? formatStockHint(product.id) : '';
-                      return (
-                        <option key={product.id} value={product.id}>
-                          {product.sku} — {product.name}
-                          {stockHint ? ` (${stockHint})` : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
+                <div className="pos-add-product__field">
+                  <label className="pos-add-product__label" htmlFor="pos-product-search">
+                    Item
+                  </label>
+                  <ProductSearchSelect
+                    inputId="pos-product-search"
+                    value={manualProduct}
+                    onChange={(product) => {
+                      setManualProduct(product);
+                      setCreateError(null);
+                      if (product && shopId && !isStockChecked(product.id)) {
+                        void loadStockFor(product.id);
+                      }
+                    }}
+                    placeholder="Type item name or code…"
+                    hintFor={(product) => formatStockHint(product)}
+                    onResults={loadStockForResults}
+                  />
+                  <span className="hint">
+                    {manualProduct
+                      ? formatStockHint(manualProduct) ||
+                        (stockLoading ? 'Checking stock…' : 'Select a shop to check stock')
+                      : 'Search 3,000+ items by name or code — no scrolling needed.'}
+                  </span>
+                </div>
                 <label className="pos-add-product__field pos-add-product__field--qty">
                   <span className="pos-add-product__label">
                     Quantity to sell
-                    {selectedManualProduct ? ` (${formatUnitLabel(selectedManualProduct.unitOfMeasure)})` : ''}
+                    {manualProduct ? ` (${formatUnitLabel(manualProduct.unitOfMeasure)})` : ''}
                   </span>
                   <input
                     type="number"
@@ -563,12 +601,13 @@ export function SalesPage() {
                     onChange={(e) => setManualQuantity(e.target.value)}
                     placeholder="1"
                   />
-                  {selectedManualProduct && shopId && (
-                    <span className="hint">{formatStockHint(selectedManualProduct.id)}</span>
-                  )}
                 </label>
                 <div className="pos-add-product__action">
-                  <button type="button" className="btn btn--ghost btn--touch" onClick={handleManualAddClick}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--touch"
+                    onClick={() => void handleManualAddClick()}
+                  >
                     Add to sale
                   </button>
                 </div>
@@ -708,20 +747,41 @@ export function SalesPage() {
       )}
 
       <div className="toolbar">
-        <select
-          className="input input--compact"
-          value={statusFilter}
-          onChange={(event) => {
-            setPage(0);
-            setStatusFilter(event.target.value);
-          }}
-        >
-          {STATUS_FILTERS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <label className="filter-field">
+          <span className="filter-field__label">Shop</span>
+          <select
+            className="input input--compact"
+            value={listShopId}
+            onChange={(event) => {
+              setPage(0);
+              setListShopId(event.target.value);
+            }}
+          >
+            <option value="">All shops</option>
+            {operableShops.map((shop) => (
+              <option key={shop.id} value={shop.id}>
+                {shop.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="filter-field">
+          <span className="filter-field__label">Status</span>
+          <select
+            className="input input--compact"
+            value={statusFilter}
+            onChange={(event) => {
+              setPage(0);
+              setStatusFilter(event.target.value);
+            }}
+          >
+            {STATUS_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {loading && <p className="muted">Loading sales…</p>}
@@ -740,7 +800,7 @@ export function SalesPage() {
                   <th>Sale</th>
                   <th>Shop</th>
                   <th>Customer</th>
-                  <th>Total</th>
+                  <th className="num">Total</th>
                   <th>Status</th>
                   <th>Created</th>
                 </tr>
@@ -775,7 +835,7 @@ export function SalesPage() {
                       </td>
                       <td data-label="Shop">{sale.shopCode}</td>
                       <td data-label="Customer">{sale.customerName ?? '—'}</td>
-                      <td data-label="Total">{formatMoney(sale.totalAmount, sale.currencyCode || currencyCode)}</td>
+                      <td data-label="Total" className="num">{formatMoney(sale.totalAmount, sale.currencyCode || currencyCode)}</td>
                       <td data-label="Status">
                         <span className={`pill ${statusPillClass(sale.status)}`}>
                           {formatStatus(sale.status)}

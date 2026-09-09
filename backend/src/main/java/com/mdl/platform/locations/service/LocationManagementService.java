@@ -128,6 +128,8 @@ public class LocationManagementService {
 
         if ("MAIN".equals(warehouseType)) {
             transferRouteProvisioningService.provisionRoutesForMainWarehouse(context.businessId(), warehouse.getId());
+        } else {
+            transferRouteProvisioningService.provisionRoutesForShopWarehouse(context.businessId(), warehouse.getId());
         }
 
         return locationQueryService.getWarehouse(warehouse.getId());

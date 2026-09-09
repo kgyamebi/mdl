@@ -4,6 +4,7 @@ import com.mdl.platform.authorization.AuthorizationService;
 import com.mdl.platform.authorization.LocationAccessService;
 import com.mdl.platform.common.dto.PageResponse;
 import com.mdl.platform.common.exception.NotFoundException;
+import com.mdl.platform.inventory.dto.InventoryBalanceFilter;
 import com.mdl.platform.inventory.dto.InventoryBalanceResponse;
 import com.mdl.platform.inventory.dto.InventorySummaryResponse;
 import com.mdl.platform.inventory.dto.InventoryTransactionResponse;
@@ -55,19 +56,22 @@ public class InventoryQueryService {
 
     @Transactional(readOnly = true)
     public PageResponse<InventoryBalanceResponse> listBalances(
-            Long locationId, Long productId, String search, boolean lowStockOnly, int page, int size) {
+            InventoryBalanceFilter filter, int page, int size) {
         authorizationService.requirePermission("inventory:view");
         UserContext context = authorizationService.requireAuthenticated();
 
-        List<Long> accessibleLocationIds = resolveAccessibleLocationIds(context, locationId);
+        List<Long> accessibleLocationIds = resolveAccessibleLocationIds(context, filter.locationId());
 
         Page<InventoryBalance> result = balanceRepository.search(
                 context.businessId(),
                 accessibleLocationIds,
-                locationId,
-                productId,
-                normalizeSearch(search),
-                lowStockOnly,
+                filter.locationId(),
+                filter.productId(),
+                filter.search(),
+                filter.lowStockOnly(),
+                filter.negativeStockOnly(),
+                filter.minQuantity(),
+                filter.maxQuantity(),
                 PageRequest.of(Math.max(page, 0), Math.max(size, 1)));
 
         Map<Long, Location> locations = ledgerService.loadLocations(
@@ -118,7 +122,7 @@ public class InventoryQueryService {
         InventoryBalance balance = balanceRepository.findByIdAndBusinessId(balanceId, context.businessId())
                 .orElseThrow(() -> new NotFoundException("Inventory balance not found"));
 
-        locationAccessService.requireLocationAccess(context, balance.getLocationId());
+        locationAccessService.requireViewableLocation(context, balance.getLocationId());
 
         Map<Long, Location> locations = ledgerService.loadLocations(
                 context.businessId(), List.of(balance.getLocationId()));
@@ -161,11 +165,11 @@ public class InventoryQueryService {
     }
 
     private List<Long> resolveAccessibleLocationIds(UserContext context, Long requestedLocationId) {
-        List<Location> accessible = locationAccessService.getAccessibleLocations(context);
+        List<Location> accessible = locationAccessService.getViewableLocations(context);
         List<Long> ids = accessible.stream().map(Location::getId).toList();
 
         if (requestedLocationId != null) {
-            locationAccessService.requireLocationAccess(context, requestedLocationId);
+            locationAccessService.requireViewableLocation(context, requestedLocationId);
             if (!ids.contains(requestedLocationId)) {
                 throw new NotFoundException("Location not found");
             }
@@ -223,9 +227,5 @@ public class InventoryQueryService {
                 transaction.getNotes(),
                 transaction.getPerformedBy(),
                 transaction.getTransactionAt());
-    }
-
-    private String normalizeSearch(String search) {
-        return search == null ? "" : search.trim();
     }
 }

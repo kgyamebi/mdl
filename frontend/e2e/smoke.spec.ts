@@ -8,6 +8,28 @@ async function loginAsOwner(page: Page) {
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 20000 });
 }
 
+/**
+ * Finds an item that is actually in stock at the selected shop using the POS
+ * type-ahead, and adds it. Most of the catalogue is out of stock, so this tries a
+ * few broad terms and picks the first suggestion reporting available stock.
+ */
+async function addInStockItemViaSearch(page: Page) {
+  const searchField = page.locator('#pos-product-search');
+
+  for (const term of ['light', 'cover', 'single', 'double', 'led']) {
+    await searchField.click();
+    await searchField.fill(term);
+
+    const inStock = page.locator('.product-search__option').filter({ hasText: /available/ }).first();
+    if (await inStock.isVisible({ timeout: 8000 }).catch(() => false)) {
+      await inStock.click();
+      return;
+    }
+  }
+
+  throw new Error('POS item search returned no in-stock suggestions for any trial term');
+}
+
 async function selectOptionByText(page: Page, selector: string, text: string) {
   const select = page.locator(selector);
   const value = await select.locator('option').filter({ hasText: text }).first().getAttribute('value');
@@ -70,7 +92,7 @@ test('copilot floating button opens assistant', async ({ page }) => {
 
 test('sales POS completes shop A sale', async ({ page }) => {
   await loginAsOwner(page);
-  await page.goto('/sales');
+  await openPageFromNav(page, 'Sales', 'Sales');
 
   await page.getByRole('button', { name: 'New sale' }).click();
   await expect(page.getByRole('heading', { name: 'New sale', level: 2 })).toBeVisible();
@@ -78,11 +100,7 @@ test('sales POS completes shop A sale', async ({ page }) => {
   await selectOptionByText(page, 'select.input >> nth=0', 'SHOP-A');
   await expect(page.getByText(/Stock checked at/i)).toBeVisible({ timeout: 10000 });
 
-  const productSelect = page.locator('.pos-add-product select.input');
-  await expect(productSelect.locator('option').filter({ hasText: /pieces available\)$/ })).not.toHaveCount(0, { timeout: 15000 });
-  const firstInStock = productSelect.locator('option').filter({ hasText: /pieces available\)$/ }).first();
-  const productLabel = (await firstInStock.textContent())?.trim() ?? '';
-  await productSelect.selectOption({ label: productLabel });
+  await addInStockItemViaSearch(page);
 
   await page.getByLabel(/Quantity to sell/i).fill('1');
   await page.getByRole('button', { name: 'Add to sale' }).click();

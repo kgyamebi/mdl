@@ -31,9 +31,10 @@ public class SaleController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<SaleResponse>>> listSales(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long shopId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.ok(saleService.listSales(status, page, size)));
+        return ResponseEntity.ok(ApiResponse.ok(saleService.listSales(status, shopId, page, size)));
     }
 
     @GetMapping("/{id}")

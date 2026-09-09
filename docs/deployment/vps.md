@@ -73,6 +73,8 @@ nano .env
 
 Keep `OWNER_SEED_ENABLED=true` for the **first** deploy so the owner account is created. Keep `DEMO_SEED_ENABLED=false` (default in prod compose).
 
+**Production stock migration:** `V37` clears all seeded/test catalog and transactional data. Production-only migration `V38` then configures the six active Modern Dream locations and imports the cleaned current stock from `MAVINLOCATIONSUMMARYSTOCK.TXT` and `STEPHENSIDE1STOCK1.TXT`. Development and test profiles use a separate small test catalog.
+
 ---
 
 ## 4. Start the stack

@@ -56,6 +56,33 @@ public class LocationAccessService {
         return isOwner(context) || context.permissions().contains("inventory:view:all");
     }
 
+    /**
+     * Locations the user may look up (stock on hand). Shop floors are visible to
+     * anyone with inventory:view so staff can check another shop for a customer.
+     * Warehouses are included via {@link #getAccessibleLocations(UserContext)} so
+     * staff can cover when a warehouse worker is away.
+     * Selling at another shop still uses assigned shop access.
+     */
+    public List<Location> getViewableLocations(UserContext context) {
+        if (canViewAllLocations(context)) {
+            return getAccessibleLocations(context);
+        }
+
+        Set<Long> viewableIds = new HashSet<>();
+        getAccessibleLocations(context).forEach(location -> viewableIds.add(location.getId()));
+
+        if (context.permissions().contains("inventory:view")) {
+            addActiveShopFloorLocationIds(context.businessId(), viewableIds);
+        }
+
+        if (viewableIds.isEmpty()) {
+            return List.of();
+        }
+
+        return locationRepository.findByBusinessIdAndIdInAndStatus(
+                context.businessId(), List.copyOf(viewableIds), "ACTIVE");
+    }
+
     public List<Location> getAccessibleLocations(UserContext context) {
         if (isOwner(context)) {
             return locationRepository.findByBusinessIdAndStatusOrderByNameAsc(context.businessId(), "ACTIVE");
@@ -90,6 +117,10 @@ public class LocationAccessService {
             addActiveWarehouseLocationIds(context.businessId(), accessibleIds, restrictedIds, tempGrantLocationIds);
         }
 
+        if (context.permissions().contains("inventory:view")) {
+            addActiveWarehouseLocationIds(context.businessId(), accessibleIds, restrictedIds, tempGrantLocationIds);
+        }
+
         if (accessibleIds.isEmpty()) {
             return List.of();
         }
@@ -103,6 +134,17 @@ public class LocationAccessService {
                 .orElseThrow(() -> new NotFoundException("Location not found"));
 
         if (!canAccessLocation(context, locationId)) {
+            throw new ForbiddenException("You do not have access to this location");
+        }
+
+        return location;
+    }
+
+    public Location requireViewableLocation(UserContext context, Long locationId) {
+        Location location = locationRepository.findByIdAndBusinessId(locationId, context.businessId())
+                .orElseThrow(() -> new NotFoundException("Location not found"));
+
+        if (!canViewLocation(context, locationId)) {
             throw new ForbiddenException("You do not have access to this location");
         }
 
@@ -160,6 +202,21 @@ public class LocationAccessService {
         return location;
     }
 
+    public boolean canViewLocation(UserContext context, Long locationId) {
+        if (canAccessLocation(context, locationId)) {
+            return true;
+        }
+        if (!context.permissions().contains("inventory:view")) {
+            return false;
+        }
+
+        Location location = locationRepository.findByIdAndBusinessId(locationId, context.businessId())
+                .orElse(null);
+        return location != null
+                && "ACTIVE".equals(location.getStatus())
+                && "SHOP".equals(location.getLocationType());
+    }
+
     public boolean canAccessLocation(UserContext context, Long locationId) {
         if (isOwner(context)) {
             return true;
@@ -194,7 +251,21 @@ public class LocationAccessService {
             return warehouseLocationIds.contains(locationId);
         }
 
+        if (context.permissions().contains("inventory:view") && isActiveWarehouseLocation(context.businessId(), locationId)) {
+            return true;
+        }
+
         return false;
+    }
+
+    private boolean isActiveWarehouseLocation(Long businessId, Long locationId) {
+        return warehouseRepository.findByBusinessIdAndLocationIdAndStatus(businessId, locationId, "ACTIVE")
+                .isPresent();
+    }
+
+    private void addActiveShopFloorLocationIds(Long businessId, Set<Long> target) {
+        shopRepository.findByBusinessIdAndStatusOrderByNameAsc(businessId, "ACTIVE")
+                .forEach(shop -> target.add(shop.getLocationId()));
     }
 
     private void addShopStockLocationIds(Long businessId, Set<Long> target) {

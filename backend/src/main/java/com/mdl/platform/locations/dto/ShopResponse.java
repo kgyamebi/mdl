@@ -9,6 +9,7 @@ public record ShopResponse(
         Long warehouseId,
         String warehouseCode,
         String warehouseName,
-        Long warehouseLocationId
+        Long warehouseLocationId,
+        boolean canOperate
 ) {
 }

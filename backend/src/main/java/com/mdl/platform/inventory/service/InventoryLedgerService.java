@@ -151,7 +151,7 @@ public class InventoryLedgerService {
         BigDecimal available = balance.getQuantityOnHand().subtract(balance.getQuantityReserved());
         BigDecimal newQuantity = balance.getQuantityOnHand().add(quantityChange);
 
-        if (newQuantity.compareTo(BigDecimal.ZERO) < 0) {
+        if (quantityChange.compareTo(BigDecimal.ZERO) < 0 && newQuantity.compareTo(BigDecimal.ZERO) < 0) {
             throw new ConflictException(formatInsufficientStockMessage(
                     product, location, available, quantityChange.abs()));
         }
@@ -159,7 +159,8 @@ public class InventoryLedgerService {
             throw new ConflictException(formatInsufficientAvailableStockMessage(
                     product, location, available, balance.getQuantityReserved(), quantityChange.abs()));
         }
-        if (newQuantity.compareTo(balance.getQuantityReserved()) < 0) {
+        if (quantityChange.compareTo(BigDecimal.ZERO) < 0
+                && newQuantity.compareTo(balance.getQuantityReserved()) < 0) {
             throw new ConflictException("Movement would reduce stock below reserved quantity");
         }
 

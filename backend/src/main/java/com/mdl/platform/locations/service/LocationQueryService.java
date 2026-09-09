@@ -57,7 +57,7 @@ public class LocationQueryService {
     public List<LocationSummaryResponse> listLocations() {
         authorizationService.requirePermission("inventory:view");
         UserContext context = authorizationService.requireAuthenticated();
-        return locationAccessService.getAccessibleLocations(context).stream()
+        return locationAccessService.getViewableLocations(context).stream()
                 .map(this::toLocationSummary)
                 .toList();
     }
@@ -66,7 +66,7 @@ public class LocationQueryService {
     public LocationSummaryResponse getLocation(Long locationId) {
         authorizationService.requirePermission("inventory:view");
         UserContext context = authorizationService.requireAuthenticated();
-        Location location = locationAccessService.requireAccessibleLocation(context, locationId);
+        Location location = locationAccessService.requireViewableLocation(context, locationId);
         return toLocationSummary(location);
     }
 
@@ -106,14 +106,18 @@ public class LocationQueryService {
                 .map(Shop::getLocationId)
                 .distinct()
                 .collect(Collectors.toMap(Function.identity(), id ->
-                        locationAccessService.requireAccessibleLocation(context, id)));
+                        locationAccessService.requireViewableLocation(context, id)));
 
         Map<Long, Warehouse> warehouseMap = warehouseRepository
                 .findByBusinessIdAndStatusOrderByNameAsc(context.businessId(), "ACTIVE").stream()
                 .collect(Collectors.toMap(Warehouse::getId, Function.identity()));
 
         return shops.stream()
-                .map(shop -> toShopResponse(shop, locationMap.get(shop.getLocationId()), warehouseMap))
+                .map(shop -> toShopResponse(
+                        shop,
+                        locationMap.get(shop.getLocationId()),
+                        warehouseMap,
+                        locationAccessService.canAccessLocation(context, shop.getLocationId())))
                 .toList();
     }
 
@@ -125,14 +129,17 @@ public class LocationQueryService {
         Shop shop = shopRepository.findByIdAndBusinessId(shopId, context.businessId())
                 .orElseThrow(() -> new NotFoundException("Shop not found"));
 
-        locationAccessService.requireLocationAccess(context, shop.getLocationId());
-        Location location = locationAccessService.requireAccessibleLocation(context, shop.getLocationId());
+        Location location = locationAccessService.requireViewableLocation(context, shop.getLocationId());
 
         Map<Long, Warehouse> warehouseMap = warehouseRepository
                 .findByBusinessIdAndStatusOrderByNameAsc(context.businessId(), "ACTIVE").stream()
                 .collect(Collectors.toMap(Warehouse::getId, Function.identity()));
 
-        return toShopResponse(shop, location, warehouseMap);
+        return toShopResponse(
+                shop,
+                location,
+                warehouseMap,
+                locationAccessService.canAccessLocation(context, shop.getLocationId()));
     }
 
     @Transactional(readOnly = true)
@@ -245,7 +252,7 @@ public class LocationQueryService {
     }
 
     private List<Shop> getAccessibleShops(UserContext context) {
-        List<Long> locationIds = locationAccessService.getAccessibleLocations(context).stream()
+        List<Long> locationIds = locationAccessService.getViewableLocations(context).stream()
                 .map(Location::getId)
                 .toList();
 
@@ -318,7 +325,8 @@ public class LocationQueryService {
                 location != null ? toLocationSummary(location) : null);
     }
 
-    private ShopResponse toShopResponse(Shop shop, Location location, Map<Long, Warehouse> warehouseMap) {
+    private ShopResponse toShopResponse(
+            Shop shop, Location location, Map<Long, Warehouse> warehouseMap, boolean canOperate) {
         Warehouse warehouse = shop.getWarehouseId() != null ? warehouseMap.get(shop.getWarehouseId()) : null;
         return new ShopResponse(
                 shop.getId(),
@@ -329,6 +337,7 @@ public class LocationQueryService {
                 shop.getWarehouseId(),
                 warehouse != null ? warehouse.getCode() : null,
                 warehouse != null ? warehouse.getName() : null,
-                warehouse != null ? warehouse.getLocationId() : null);
+                warehouse != null ? warehouse.getLocationId() : null,
+                canOperate);
     }
 }

@@ -374,10 +374,12 @@ export interface Shop {
   code: string;
   name: string;
   status: string;
+  location?: LocationSummary;
   warehouseId: number;
   warehouseCode: string;
   warehouseName: string;
   warehouseLocationId: number;
+  canOperate?: boolean;
 }
 
 export interface SaleItem {
