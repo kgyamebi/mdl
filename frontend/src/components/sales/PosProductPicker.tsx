@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { VirtualList } from '../common/VirtualList';
@@ -226,8 +227,25 @@ export function PosProductPicker({
   );
   /** Only auto-scroll the list to highlight during keyboard navigation — not touch scroll. */
   const [keyboardScrollIndex, setKeyboardScrollIndex] = useState<number | null>(null);
-  const pointerGestureRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  /** True once the current finger gesture dragged/scrolled — blocks ghost taps. */
+  const touchDraggedRef = useRef(false);
   const suppressTapUntilRef = useRef(0);
+  const ignoreNextClickRef = useRef(false);
+
+  function markScrollGesture() {
+    touchDraggedRef.current = true;
+    suppressTapUntilRef.current = Date.now() + 500;
+  }
+
+  function canAcceptTap(): boolean {
+    if (touchDraggedRef.current) {
+      return false;
+    }
+    if (Date.now() < suppressTapUntilRef.current) {
+      return false;
+    }
+    return true;
+  }
 
   const listHeight = isNarrow ? LIST_HEIGHT_MOBILE : LIST_HEIGHT_DESKTOP;
   const showSearchResults = debouncedQuery.trim().length > 0 || categoryId != null;
@@ -599,63 +617,63 @@ export function PosProductPicker({
     }
   }
 
-  function beginPointerGesture(event: ReactPointerEvent) {
-    pointerGestureRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      moved: false,
-    };
-  }
-
-  function trackPointerGesture(event: ReactPointerEvent) {
-    const gesture = pointerGestureRef.current;
-    if (!gesture || gesture.moved) {
+  function activateHit(hit: PosProductHit) {
+    if (!canAcceptTap()) {
       return;
     }
-    if (Math.abs(event.clientX - gesture.x) > 10 || Math.abs(event.clientY - gesture.y) > 10) {
-      gesture.moved = true;
+    if (hit.stockState === 'OUT') {
+      setError(`${hit.sku} is out of stock at this shop.`);
+      return;
     }
-  }
-
-  function wasTapGesture(): boolean {
-    if (Date.now() < suppressTapUntilRef.current) {
-      pointerGestureRef.current = null;
-      return false;
-    }
-    const gesture = pointerGestureRef.current;
-    pointerGestureRef.current = null;
-    return !gesture?.moved;
+    void handleOneTapAdd(hit);
   }
 
   function renderRow(hit: PosProductHit, index: number, style: CSSProperties) {
     const active = index === highlight;
     const out = hit.stockState === 'OUT';
+
+    const onRowPointerDown = (event: ReactPointerEvent) => {
+      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        touchDraggedRef.current = false;
+      }
+    };
+
+    const onRowPointerUp = (event: ReactPointerEvent) => {
+      if (event.pointerType !== 'touch' && event.pointerType !== 'pen') {
+        return;
+      }
+      // Handle selection on pointerup for touch; ignore the synthetic click that follows.
+      ignoreNextClickRef.current = true;
+      window.setTimeout(() => {
+        ignoreNextClickRef.current = false;
+      }, 400);
+      activateHit(hit);
+    };
+
+    const onRowClick = (event: ReactMouseEvent) => {
+      if (ignoreNextClickRef.current) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Mouse / trackpad
+      activateHit(hit);
+    };
+
     return (
-      <div key={hit.id} style={style} className="pos-picker__row-wrap">
-        <button
-          type="button"
+      <div key={hit.id} style={style} className="pos-picker__row-wrap" role="option" aria-selected={active}>
+        <div
+          role="button"
+          tabIndex={-1}
           className={`pos-picker__card${active ? ' pos-picker__card--active' : ''}${out ? ' pos-picker__card--out' : ''}`}
           onMouseEnter={() => {
-            // Hover highlight only on real pointers — touch + mouseenter fights scrolling.
             if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
               setHighlight(index);
             }
           }}
-          onPointerDown={beginPointerGesture}
-          onPointerMove={trackPointerGesture}
-          onPointerCancel={() => {
-            pointerGestureRef.current = null;
-          }}
-          onClick={() => {
-            if (!wasTapGesture()) {
-              return;
-            }
-            if (out) {
-              setError(`${hit.sku} is out of stock at this shop.`);
-              return;
-            }
-            void handleOneTapAdd(hit);
-          }}
+          onPointerDown={onRowPointerDown}
+          onPointerUp={onRowPointerUp}
+          onClick={onRowClick}
         >
           <div className="pos-picker__card-main">
             <strong className="pos-picker__name">{hit.name}</strong>
@@ -673,18 +691,38 @@ export function PosProductPicker({
             <span className="pos-picker__price">{formatMoney(hit.sellingPrice, hit.currencyCode || currencyCode)}</span>
             <span className="pos-picker__unit">/{formatUnit(hit.unitOfMeasure)}</span>
           </div>
-        </button>
+        </div>
         <button
           type="button"
           className="pos-picker__qty-btn"
           aria-label="Choose quantity"
           title="Choose quantity"
           disabled={out}
-          onPointerDown={beginPointerGesture}
-          onPointerMove={trackPointerGesture}
+          onPointerDown={(event) => {
+            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+              touchDraggedRef.current = false;
+            }
+          }}
+          onPointerUp={(event) => {
+            event.stopPropagation();
+            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+              ignoreNextClickRef.current = true;
+              window.setTimeout(() => {
+                ignoreNextClickRef.current = false;
+              }, 400);
+              if (!canAcceptTap() || out) {
+                return;
+              }
+              chooseForQuantity(hit);
+            }
+          }}
           onClick={(event) => {
             event.stopPropagation();
-            if (!wasTapGesture()) {
+            if (ignoreNextClickRef.current) {
+              event.preventDefault();
+              return;
+            }
+            if (!canAcceptTap() || out) {
               return;
             }
             chooseForQuantity(hit);
@@ -696,11 +734,31 @@ export function PosProductPicker({
           type="button"
           className={`pos-picker__fav${hit.favorite ? ' pos-picker__fav--on' : ''}`}
           aria-label={hit.favorite ? 'Remove favorite' : 'Add favorite'}
-          onPointerDown={beginPointerGesture}
-          onPointerMove={trackPointerGesture}
+          onPointerDown={(event) => {
+            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+              touchDraggedRef.current = false;
+            }
+          }}
+          onPointerUp={(event) => {
+            event.stopPropagation();
+            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+              ignoreNextClickRef.current = true;
+              window.setTimeout(() => {
+                ignoreNextClickRef.current = false;
+              }, 400);
+              if (!canAcceptTap()) {
+                return;
+              }
+              void handleFavoriteToggle(hit);
+            }
+          }}
           onClick={(event) => {
             event.stopPropagation();
-            if (!wasTapGesture()) {
+            if (ignoreNextClickRef.current) {
+              event.preventDefault();
+              return;
+            }
+            if (!canAcceptTap()) {
               return;
             }
             void handleFavoriteToggle(hit);
@@ -858,9 +916,8 @@ export function PosProductPicker({
           itemHeight={ROW_HEIGHT}
           height={listHeight}
           scrollToIndex={keyboardScrollIndex}
-          onUserScroll={() => {
-            // Ignore the synthetic click that follows a finger-scroll on mobile.
-            suppressTapUntilRef.current = Date.now() + 350;
+          onScrollGesture={() => {
+            markScrollGesture();
             setKeyboardScrollIndex(null);
           }}
           renderItem={renderRow}

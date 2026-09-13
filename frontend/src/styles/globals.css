@@ -2552,7 +2552,9 @@ select.input optgroup {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  /* Allow vertical finger scroll to pass through to the list; taps still click. */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Allow vertical finger scroll; selection is handled in JS after drag detection. */
   touch-action: pan-y;
 }
 

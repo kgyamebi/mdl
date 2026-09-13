@@ -11,9 +11,11 @@ interface VirtualListProps<T> {
   /** Only scroll the list to this index when set (e.g. keyboard nav). Omit during touch scroll. */
   scrollToIndex?: number | null;
   onScrollIndexChange?: (index: number) => void;
-  /** Fired when the user scrolls the list (finger or wheel). */
-  onUserScroll?: () => void;
+  /** Fired as soon as a finger drag/scroll is detected (before click). */
+  onScrollGesture?: () => void;
 }
+
+const DRAG_THRESHOLD_PX = 8;
 
 export function VirtualList<T>({
   items,
@@ -25,12 +27,14 @@ export function VirtualList<T>({
   renderItem,
   scrollToIndex,
   onScrollIndexChange,
-  onUserScroll,
+  onScrollGesture,
 }: VirtualListProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const prevLengthRef = useRef(items.length);
   const programmaticScrollRef = useRef(false);
+  const onScrollGestureRef = useRef(onScrollGesture);
+  onScrollGestureRef.current = onScrollGesture;
 
   useEffect(() => {
     if (items.length < prevLengthRef.current && containerRef.current) {
@@ -42,6 +46,70 @@ export function VirtualList<T>({
     }
     prevLengthRef.current = items.length;
   }, [items.length, itemHeight, height]);
+
+  // Capture-phase touch tracking: when the list scrolls, buttons never get pointermove,
+  // so we must detect drag here and suppress the ghost click that follows.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    let startX = 0;
+    let startY = 0;
+    let dragging = false;
+    let tracking = false;
+
+    const markDrag = () => {
+      if (dragging) {
+        return;
+      }
+      dragging = true;
+      onScrollGestureRef.current?.();
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        return;
+      }
+      tracking = true;
+      dragging = false;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!tracking || event.touches.length !== 1) {
+        return;
+      }
+      const dx = Math.abs(event.touches[0].clientX - startX);
+      const dy = Math.abs(event.touches[0].clientY - startY);
+      if (dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) {
+        markDrag();
+      }
+    };
+
+    const onTouchEnd = () => {
+      tracking = false;
+    };
+
+    const onTouchCancel = () => {
+      tracking = false;
+      markDrag();
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true, capture: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true, capture: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart, true);
+      el.removeEventListener('touchmove', onTouchMove, true);
+      el.removeEventListener('touchend', onTouchEnd, true);
+      el.removeEventListener('touchcancel', onTouchCancel, true);
+    };
+  }, [items.length, height]);
 
   const totalHeight = items.length * itemHeight;
   const maxStart = Math.max(0, items.length - 1);
@@ -76,7 +144,7 @@ export function VirtualList<T>({
     setScrollTop(nextTop);
     onScrollIndexChange?.(Math.floor(nextTop / itemHeight));
     if (!programmaticScrollRef.current) {
-      onUserScroll?.();
+      onScrollGestureRef.current?.();
     }
   }
 
