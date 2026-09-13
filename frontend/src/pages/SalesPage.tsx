@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { DetailCloseButton } from '../components/layout/DetailCloseButton';
 import { SaleActionPanel } from '../components/sales/SaleActionPanel';
@@ -111,6 +111,7 @@ export function SalesPage() {
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const creatingLockRef = useRef(false);
   // productId -> available quantity at the selected shop. A present key means the
   // balance has been checked, so a missing row can be reported as zero rather than
   // being confused with "not looked up yet".
@@ -379,7 +380,11 @@ export function SalesPage() {
       setCreateError('Add at least one product to the sale.');
       return;
     }
+    if (creatingLockRef.current || creating) {
+      return;
+    }
 
+    creatingLockRef.current = true;
     setCreating(true);
 
     try {
@@ -412,6 +417,7 @@ export function SalesPage() {
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to complete sale');
     } finally {
+      creatingLockRef.current = false;
       setCreating(false);
     }
   }

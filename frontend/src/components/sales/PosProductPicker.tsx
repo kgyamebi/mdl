@@ -25,7 +25,7 @@ import {
 } from '../../services/productsPosService';
 import type { Product, ProductCategory } from '../../types/api';
 
-const SEARCH_DEBOUNCE_MS = 220;
+const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 40;
 const ROW_HEIGHT = 64;
 const LIST_HEIGHT_MOBILE = 220;
@@ -413,7 +413,10 @@ export function PosProductPicker({
       setError('Enter a quantity greater than zero.');
       return;
     }
-    // Do not hard-block on OUT here — SalesPage uses the same stock checks as live.
+    if (hit.stockState === 'OUT') {
+      setError(`${hit.sku} is out of stock at this shop.`);
+      return;
+    }
 
     const selectionStarted = performance.now();
     const knownStock = hit.stockAvailable != null ? Number(hit.stockAvailable) : null;
@@ -526,6 +529,15 @@ export function PosProductPicker({
       setHighlight((current) => (current - 1 + activeList.length) % activeList.length);
       return;
     }
+    // `#` opens quantity mode for the highlighted (or first) result — same as the # button.
+    if (event.key === '#' || (event.key === '3' && event.shiftKey)) {
+      const hit = activeList[highlight] ?? activeList[0];
+      if (hit && hit.stockState !== 'OUT') {
+        event.preventDefault();
+        chooseForQuantity(hit);
+      }
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       const term = query.trim();
@@ -539,6 +551,10 @@ export function PosProductPicker({
       }
       // Shift+Enter opens qty mode; plain Enter adds ×1 for counter speed.
       if (event.shiftKey) {
+        if (hit.stockState === 'OUT') {
+          setError(`${hit.sku} is out of stock at this shop.`);
+          return;
+        }
         chooseForQuantity(hit);
         return;
       }
@@ -546,10 +562,13 @@ export function PosProductPicker({
       return;
     }
     if (event.key === 'Escape') {
+      event.preventDefault();
       setQuery('');
+      setDebouncedQuery('');
       setSelected(null);
       setCategoryId(null);
       setHighlight(0);
+      setError(null);
     }
   }
 
@@ -655,7 +674,7 @@ export function PosProductPicker({
           onKeyDown={handleSearchKeyDown}
         />
         <p className="hint pos-picker__hint">
-          Enter adds ×1 · Shift+Enter for qty · ↑↓ to move · tap # for quantity
+          Enter adds ×1 · # or Shift+Enter for qty · ↑↓ to move
         </p>
       </div>
 

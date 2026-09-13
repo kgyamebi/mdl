@@ -44,7 +44,7 @@ class FlywayMigrationIntegrationTest {
     void flywayAppliesAllMigrations() {
         Integer version = jdbcTemplate.queryForObject(
                 "SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history WHERE success = 1", Integer.class);
-        assertThat(version).isEqualTo(41);
+        assertThat(version).isEqualTo(42);
     }
 
     @Test

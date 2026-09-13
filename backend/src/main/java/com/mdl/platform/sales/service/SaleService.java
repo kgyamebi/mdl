@@ -331,7 +331,14 @@ public class SaleService {
     private String generateSaleNumber(Long businessId) {
         String prefix = "SALE-" + Year.now().getValue() + "-";
         long count = saleRepository.countByBusinessIdAndSaleNumberStartingWith(businessId, prefix);
-        return prefix + String.format("%04d", count + 1);
+        for (int offset = 1; offset <= 25; offset++) {
+            String candidate = prefix + String.format("%04d", count + offset);
+            if (!saleRepository.existsByBusinessIdAndSaleNumber(businessId, candidate)) {
+                return candidate;
+            }
+        }
+        // Extremely unlikely collision storm — still unique within the business.
+        return prefix + String.format("%04d", count + 1) + "-" + System.currentTimeMillis() % 100000;
     }
 
     private void validateUniqueProducts(List<CreateSaleRequest.CreateSaleItemRequest> items) {

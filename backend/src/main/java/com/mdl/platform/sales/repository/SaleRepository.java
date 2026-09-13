@@ -15,6 +15,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     long countByBusinessIdAndSaleNumberStartingWith(Long businessId, String prefix);
 
+    boolean existsByBusinessIdAndSaleNumber(Long businessId, String saleNumber);
+
     @Query("""
             SELECT s FROM Sale s
             WHERE s.businessId = :businessId

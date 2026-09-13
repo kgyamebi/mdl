@@ -1,6 +1,7 @@
 package com.mdl.platform.products.service;
 
 import com.mdl.platform.authorization.AuthorizationService;
+import com.mdl.platform.authorization.LocationAccessService;
 import com.mdl.platform.businesses.repository.BusinessRepository;
 import com.mdl.platform.common.dto.PageResponse;
 import com.mdl.platform.common.exception.NotFoundException;
@@ -39,6 +40,7 @@ public class ProductPosSearchService {
     private static final int FAVORITE_LIMIT = 24;
 
     private final AuthorizationService authorizationService;
+    private final LocationAccessService locationAccessService;
     private final ProductRepository productRepository;
     private final UserProductRecentRepository recentRepository;
     private final UserProductFavoriteRepository favoriteRepository;
@@ -50,12 +52,14 @@ public class ProductPosSearchService {
 
     public ProductPosSearchService(
             AuthorizationService authorizationService,
+            LocationAccessService locationAccessService,
             ProductRepository productRepository,
             UserProductRecentRepository recentRepository,
             UserProductFavoriteRepository favoriteRepository,
             ProductSearchEventRepository searchEventRepository,
             BusinessRepository businessRepository) {
         this.authorizationService = authorizationService;
+        this.locationAccessService = locationAccessService;
         this.productRepository = productRepository;
         this.recentRepository = recentRepository;
         this.favoriteRepository = favoriteRepository;
@@ -72,6 +76,7 @@ public class ProductPosSearchService {
             int size) {
         authorizationService.requirePermission("product:view");
         UserContext context = authorizationService.requireAuthenticated();
+        Long scopedLocationId = requireScopedLocationId(context, locationId);
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
@@ -155,12 +160,12 @@ public class ProductPosSearchService {
                 """;
 
         Query countQuery = entityManager.createNativeQuery("SELECT COUNT(*) " + from);
-        bindFilterParams(countQuery, context, categoryId, locationId, tokens);
+        bindFilterParams(countQuery, context, categoryId, scopedLocationId, tokens);
         Number totalNumber = (Number) countQuery.getSingleResult();
         long total = totalNumber == null ? 0L : totalNumber.longValue();
 
         Query dataQuery = entityManager.createNativeQuery(select + from + orderBy);
-        bindFilterParams(dataQuery, context, categoryId, locationId, tokens);
+        bindFilterParams(dataQuery, context, categoryId, scopedLocationId, tokens);
         bindRankingParams(dataQuery, search);
         dataQuery.setFirstResult(safePage * safeSize);
         dataQuery.setMaxResults(safeSize);
@@ -168,7 +173,7 @@ public class ProductPosSearchService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = dataQuery.getResultList();
         List<PosProductHit> items = rows.stream()
-                .map(row -> toHit(row, currencyCode, locationId != null))
+                .map(row -> toHit(row, currencyCode, scopedLocationId != null))
                 .toList();
 
         int totalPages = safeSize == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
@@ -179,6 +184,7 @@ public class ProductPosSearchService {
     public PosQuickAccessResponse quickAccess(Long locationId) {
         authorizationService.requirePermission("product:view");
         UserContext context = authorizationService.requireAuthenticated();
+        Long scopedLocationId = requireScopedLocationId(context, locationId);
         String currencyCode = requireCurrencyCode(context.businessId());
 
         List<Long> recentIds = recentRepository.findTop20ByUserIdOrderBySelectedAtDesc(context.userId()).stream()
@@ -197,7 +203,7 @@ public class ProductPosSearchService {
                 context.businessId(),
                 context.userId(),
                 currencyCode,
-                locationId,
+                scopedLocationId,
                 mergeUnique(recentIds, frequentIds, favoriteIds));
 
         return new PosQuickAccessResponse(
@@ -208,7 +214,7 @@ public class ProductPosSearchService {
 
     @Transactional
     public void recordSelection(Long productId) {
-        authorizationService.requirePermission("product:view");
+        authorizationService.requirePermission("sale:create");
         UserContext context = authorizationService.requireAuthenticated();
         requireActiveProduct(context.businessId(), productId);
 
@@ -224,7 +230,7 @@ public class ProductPosSearchService {
 
     @Transactional
     public boolean toggleFavorite(Long productId) {
-        authorizationService.requirePermission("product:view");
+        authorizationService.requirePermission("sale:create");
         UserContext context = authorizationService.requireAuthenticated();
         requireActiveProduct(context.businessId(), productId);
 
@@ -244,17 +250,27 @@ public class ProductPosSearchService {
 
     @Transactional
     public void recordSearchEvent(ProductSearchEventRequest request) {
-        authorizationService.requirePermission("product:view");
+        authorizationService.requirePermission("sale:create");
         UserContext context = authorizationService.requireAuthenticated();
+
+        Long shopId = null;
+        if (request.shopId() != null) {
+            shopId = locationAccessService.requireAccessibleShop(context, request.shopId()).getId();
+        }
+        Long selectedProductId = null;
+        if (request.selectedProductId() != null) {
+            requireActiveProduct(context.businessId(), request.selectedProductId());
+            selectedProductId = request.selectedProductId();
+        }
 
         ProductSearchEvent event = new ProductSearchEvent();
         event.setBusinessId(context.businessId());
         event.setUserId(context.userId());
-        event.setShopId(request.shopId());
+        event.setShopId(shopId);
         event.setQueryText(request.queryText().trim());
         event.setResultCount(request.resultCount() == null ? 0 : Math.max(request.resultCount(), 0));
         event.setLatencyMs(request.latencyMs());
-        event.setSelectedProductId(request.selectedProductId());
+        event.setSelectedProductId(selectedProductId);
         event.setSelectionLatencyMs(request.selectionLatencyMs());
         event.setFailed(Boolean.TRUE.equals(request.failed())
                 || (request.resultCount() != null && request.resultCount() == 0 && request.queryText().trim().length() >= 2));
@@ -453,6 +469,14 @@ public class ProductPosSearchService {
         return ids.stream().map(byId::get).filter(hit -> hit != null).toList();
     }
 
+    private Long requireScopedLocationId(UserContext context, Long locationId) {
+        if (locationId == null) {
+            return null;
+        }
+        locationAccessService.requireViewableLocation(context, locationId);
+        return locationId;
+    }
+
     private void requireActiveProduct(Long businessId, Long productId) {
         Product product = productRepository.findByIdAndBusinessId(productId, businessId)
                 .orElseThrow(() -> new NotFoundException("Product not found: " + productId));
@@ -464,6 +488,6 @@ public class ProductPosSearchService {
     private String requireCurrencyCode(Long businessId) {
         return businessRepository.findByIdWithCurrency(businessId)
                 .map(business -> business.getCurrency().getCode())
-                .orElse("GHS");
+                .orElseThrow(() -> new NotFoundException("Business not found"));
     }
 }

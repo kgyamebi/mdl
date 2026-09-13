@@ -1,14 +1,15 @@
 -- =============================================================================
 -- V42: POS product search — indexes, recents, favorites, search analytics
+-- Additive only: does not modify products, sales, users, or stock quantities.
 -- =============================================================================
 
 -- Faster catalog lookups for POS type-ahead (name / brand / status scoped).
-CREATE INDEX idx_products_business_status_name ON products (business_id, status, name);
-CREATE INDEX idx_products_business_brand ON products (business_id, brand);
-CREATE INDEX idx_products_business_category_status ON products (business_id, category_id, status);
+CREATE INDEX IF NOT EXISTS idx_products_business_status_name ON products (business_id, status, name);
+CREATE INDEX IF NOT EXISTS idx_products_business_brand ON products (business_id, brand);
+CREATE INDEX IF NOT EXISTS idx_products_business_category_status ON products (business_id, category_id, status);
 
 -- Per-user recent product selections (POS speed).
-CREATE TABLE user_product_recents (
+CREATE TABLE IF NOT EXISTS user_product_recents (
     id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     business_id     BIGINT UNSIGNED NOT NULL,
     user_id         BIGINT UNSIGNED NOT NULL,
@@ -27,7 +28,7 @@ CREATE TABLE user_product_recents (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Per-user favorite products for one-tap POS access.
-CREATE TABLE user_product_favorites (
+CREATE TABLE IF NOT EXISTS user_product_favorites (
     id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     business_id     BIGINT UNSIGNED NOT NULL,
     user_id         BIGINT UNSIGNED NOT NULL,
@@ -45,7 +46,7 @@ CREATE TABLE user_product_favorites (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Search / selection latency analytics for POS tuning.
-CREATE TABLE product_search_events (
+CREATE TABLE IF NOT EXISTS product_search_events (
     id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     business_id         BIGINT UNSIGNED NOT NULL,
     user_id             BIGINT UNSIGNED NULL,
