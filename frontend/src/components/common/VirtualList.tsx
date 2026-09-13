@@ -8,8 +8,11 @@ interface VirtualListProps<T> {
   className?: string;
   style?: CSSProperties;
   renderItem: (item: T, index: number, style: CSSProperties) => ReactNode;
+  /** Only scroll the list to this index when set (e.g. keyboard nav). Omit during touch scroll. */
   scrollToIndex?: number | null;
   onScrollIndexChange?: (index: number) => void;
+  /** Fired when the user scrolls the list (finger or wheel). */
+  onUserScroll?: () => void;
 }
 
 export function VirtualList<T>({
@@ -22,10 +25,12 @@ export function VirtualList<T>({
   renderItem,
   scrollToIndex,
   onScrollIndexChange,
+  onUserScroll,
 }: VirtualListProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const prevLengthRef = useRef(items.length);
+  const programmaticScrollRef = useRef(false);
 
   useEffect(() => {
     if (items.length < prevLengthRef.current && containerRef.current) {
@@ -57,8 +62,12 @@ export function VirtualList<T>({
     const top = clamped * itemHeight;
     const viewBottom = containerRef.current.scrollTop + height;
     if (top < containerRef.current.scrollTop || top + itemHeight > viewBottom) {
+      programmaticScrollRef.current = true;
       containerRef.current.scrollTop = Math.max(0, top - itemHeight);
       setScrollTop(containerRef.current.scrollTop);
+      window.setTimeout(() => {
+        programmaticScrollRef.current = false;
+      }, 0);
     }
   }, [scrollToIndex, itemHeight, height, items.length]);
 
@@ -66,15 +75,27 @@ export function VirtualList<T>({
     const nextTop = event.currentTarget.scrollTop;
     setScrollTop(nextTop);
     onScrollIndexChange?.(Math.floor(nextTop / itemHeight));
+    if (!programmaticScrollRef.current) {
+      onUserScroll?.();
+    }
   }
 
   return (
     <div
       ref={containerRef}
       className={className}
-      style={{ ...style, height, overflowY: 'auto', position: 'relative' }}
+      style={{
+        ...style,
+        height,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        position: 'relative',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+        overscrollBehavior: 'contain',
+      }}
       onScroll={handleScroll}
-      role="presentation"
+      role="listbox"
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         {visibleItems.map(({ item, index }) =>

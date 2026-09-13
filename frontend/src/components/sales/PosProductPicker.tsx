@@ -7,6 +7,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { VirtualList } from '../common/VirtualList';
 import {
@@ -223,6 +224,10 @@ export function PosProductPicker({
   const [isNarrow, setIsNarrow] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)').matches : false,
   );
+  /** Only auto-scroll the list to highlight during keyboard navigation — not touch scroll. */
+  const [keyboardScrollIndex, setKeyboardScrollIndex] = useState<number | null>(null);
+  const pointerGestureRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const suppressTapUntilRef = useRef(0);
 
   const listHeight = isNarrow ? LIST_HEIGHT_MOBILE : LIST_HEIGHT_DESKTOP;
   const showSearchResults = debouncedQuery.trim().length > 0 || categoryId != null;
@@ -518,7 +523,11 @@ export function PosProductPicker({
       if (activeList.length === 0) {
         return;
       }
-      setHighlight((current) => (current + 1) % activeList.length);
+      setHighlight((current) => {
+        const next = (current + 1) % activeList.length;
+        setKeyboardScrollIndex(next);
+        return next;
+      });
       return;
     }
     if (event.key === 'ArrowUp') {
@@ -526,7 +535,11 @@ export function PosProductPicker({
       if (activeList.length === 0) {
         return;
       }
-      setHighlight((current) => (current - 1 + activeList.length) % activeList.length);
+      setHighlight((current) => {
+        const next = (current - 1 + activeList.length) % activeList.length;
+        setKeyboardScrollIndex(next);
+        return next;
+      });
       return;
     }
     // `#` opens quantity mode for the highlighted (or first) result — same as the # button.
@@ -586,6 +599,34 @@ export function PosProductPicker({
     }
   }
 
+  function beginPointerGesture(event: ReactPointerEvent) {
+    pointerGestureRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+    };
+  }
+
+  function trackPointerGesture(event: ReactPointerEvent) {
+    const gesture = pointerGestureRef.current;
+    if (!gesture || gesture.moved) {
+      return;
+    }
+    if (Math.abs(event.clientX - gesture.x) > 10 || Math.abs(event.clientY - gesture.y) > 10) {
+      gesture.moved = true;
+    }
+  }
+
+  function wasTapGesture(): boolean {
+    if (Date.now() < suppressTapUntilRef.current) {
+      pointerGestureRef.current = null;
+      return false;
+    }
+    const gesture = pointerGestureRef.current;
+    pointerGestureRef.current = null;
+    return !gesture?.moved;
+  }
+
   function renderRow(hit: PosProductHit, index: number, style: CSSProperties) {
     const active = index === highlight;
     const out = hit.stockState === 'OUT';
@@ -594,8 +635,21 @@ export function PosProductPicker({
         <button
           type="button"
           className={`pos-picker__card${active ? ' pos-picker__card--active' : ''}${out ? ' pos-picker__card--out' : ''}`}
-          onMouseEnter={() => setHighlight(index)}
+          onMouseEnter={() => {
+            // Hover highlight only on real pointers — touch + mouseenter fights scrolling.
+            if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+              setHighlight(index);
+            }
+          }}
+          onPointerDown={beginPointerGesture}
+          onPointerMove={trackPointerGesture}
+          onPointerCancel={() => {
+            pointerGestureRef.current = null;
+          }}
           onClick={() => {
+            if (!wasTapGesture()) {
+              return;
+            }
             if (out) {
               setError(`${hit.sku} is out of stock at this shop.`);
               return;
@@ -626,8 +680,13 @@ export function PosProductPicker({
           aria-label="Choose quantity"
           title="Choose quantity"
           disabled={out}
+          onPointerDown={beginPointerGesture}
+          onPointerMove={trackPointerGesture}
           onClick={(event) => {
             event.stopPropagation();
+            if (!wasTapGesture()) {
+              return;
+            }
             chooseForQuantity(hit);
           }}
         >
@@ -637,8 +696,13 @@ export function PosProductPicker({
           type="button"
           className={`pos-picker__fav${hit.favorite ? ' pos-picker__fav--on' : ''}`}
           aria-label={hit.favorite ? 'Remove favorite' : 'Add favorite'}
+          onPointerDown={beginPointerGesture}
+          onPointerMove={trackPointerGesture}
           onClick={(event) => {
             event.stopPropagation();
+            if (!wasTapGesture()) {
+              return;
+            }
             void handleFavoriteToggle(hit);
           }}
         >
@@ -793,7 +857,12 @@ export function PosProductPicker({
           items={activeList}
           itemHeight={ROW_HEIGHT}
           height={listHeight}
-          scrollToIndex={highlight}
+          scrollToIndex={keyboardScrollIndex}
+          onUserScroll={() => {
+            // Ignore the synthetic click that follows a finger-scroll on mobile.
+            suppressTapUntilRef.current = Date.now() + 350;
+            setKeyboardScrollIndex(null);
+          }}
           renderItem={renderRow}
         />
       )}

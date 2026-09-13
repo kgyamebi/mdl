@@ -2523,6 +2523,9 @@ select.input optgroup {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.12);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .pos-picker__row-wrap {
@@ -2532,6 +2535,7 @@ select.input optgroup {
   align-items: stretch;
   padding: 0.2rem 0.3rem;
   box-sizing: border-box;
+  touch-action: pan-y;
 }
 
 .pos-picker__card {
@@ -2548,7 +2552,8 @@ select.input optgroup {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  touch-action: manipulation;
+  /* Allow vertical finger scroll to pass through to the list; taps still click. */
+  touch-action: pan-y;
 }
 
 .pos-picker__card--out {
@@ -2629,7 +2634,7 @@ select.input optgroup {
   color: var(--color-muted);
   font: inherit;
   cursor: pointer;
-  touch-action: manipulation;
+  touch-action: pan-y;
 }
 
 .pos-picker__fav--on {
