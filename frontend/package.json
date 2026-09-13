@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "test:touch-guard": "npx --yes tsx scripts/test-touch-select-guard.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

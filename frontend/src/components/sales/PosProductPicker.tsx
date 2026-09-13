@@ -25,6 +25,7 @@ import {
   type PosProductHit,
   type StockState,
 } from '../../services/productsPosService';
+import { TouchSelectGuard } from './touchSelectGuard';
 import type { Product, ProductCategory } from '../../types/api';
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -227,25 +228,10 @@ export function PosProductPicker({
   );
   /** Only auto-scroll the list to highlight during keyboard navigation — not touch scroll. */
   const [keyboardScrollIndex, setKeyboardScrollIndex] = useState<number | null>(null);
-  /** True once the current finger gesture dragged/scrolled — blocks ghost taps. */
-  const touchDraggedRef = useRef(false);
-  const suppressTapUntilRef = useRef(0);
+  const touchGuardRef = useRef(new TouchSelectGuard({ suppressMs: 800, dragThresholdPx: 8 }));
   const ignoreNextClickRef = useRef(false);
-
-  function markScrollGesture() {
-    touchDraggedRef.current = true;
-    suppressTapUntilRef.current = Date.now() + 500;
-  }
-
-  function canAcceptTap(): boolean {
-    if (touchDraggedRef.current) {
-      return false;
-    }
-    if (Date.now() < suppressTapUntilRef.current) {
-      return false;
-    }
-    return true;
-  }
+  const isCoarsePointer = () =>
+    typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
   const listHeight = isNarrow ? LIST_HEIGHT_MOBILE : LIST_HEIGHT_DESKTOP;
   const showSearchResults = debouncedQuery.trim().length > 0 || categoryId != null;
@@ -617,8 +603,19 @@ export function PosProductPicker({
     }
   }
 
-  function activateHit(hit: PosProductHit) {
-    if (!canAcceptTap()) {
+  function activateHitFromTouch(hit: PosProductHit) {
+    if (!touchGuardRef.current.canSelectFromTouch()) {
+      return;
+    }
+    if (hit.stockState === 'OUT') {
+      setError(`${hit.sku} is out of stock at this shop.`);
+      return;
+    }
+    void handleOneTapAdd(hit);
+  }
+
+  function activateHitFromMouse(hit: PosProductHit) {
+    if (!touchGuardRef.current.canSelectFromMouse(isCoarsePointer())) {
       return;
     }
     if (hit.stockState === 'OUT') {
@@ -632,46 +629,47 @@ export function PosProductPicker({
     const active = index === highlight;
     const out = hit.stockState === 'OUT';
 
-    const onRowPointerDown = (event: ReactPointerEvent) => {
-      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-        touchDraggedRef.current = false;
-      }
-    };
-
     const onRowPointerUp = (event: ReactPointerEvent) => {
       if (event.pointerType !== 'touch' && event.pointerType !== 'pen') {
         return;
       }
-      // Handle selection on pointerup for touch; ignore the synthetic click that follows.
+      // Touch selects only on pointerup when the gesture was a tap — never via click.
       ignoreNextClickRef.current = true;
       window.setTimeout(() => {
         ignoreNextClickRef.current = false;
-      }, 400);
-      activateHit(hit);
+      }, 500);
+      activateHitFromTouch(hit);
     };
 
     const onRowClick = (event: ReactMouseEvent) => {
-      if (ignoreNextClickRef.current) {
+      // Phones: ignore all clicks (ghost clicks after scroll). Desktop mouse still works.
+      if (ignoreNextClickRef.current || isCoarsePointer()) {
         event.preventDefault();
         event.stopPropagation();
         return;
       }
-      // Mouse / trackpad
-      activateHit(hit);
+      activateHitFromMouse(hit);
     };
 
     return (
-      <div key={hit.id} style={style} className="pos-picker__row-wrap" role="option" aria-selected={active}>
+      <div
+        key={hit.id}
+        style={style}
+        className="pos-picker__row-wrap"
+        role="option"
+        aria-selected={active}
+        data-testid="pos-product-row"
+      >
         <div
           role="button"
           tabIndex={-1}
           className={`pos-picker__card${active ? ' pos-picker__card--active' : ''}${out ? ' pos-picker__card--out' : ''}`}
+          data-testid="pos-product-card"
           onMouseEnter={() => {
             if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
               setHighlight(index);
             }
           }}
-          onPointerDown={onRowPointerDown}
           onPointerUp={onRowPointerUp}
           onClick={onRowClick}
         >
@@ -698,19 +696,14 @@ export function PosProductPicker({
           aria-label="Choose quantity"
           title="Choose quantity"
           disabled={out}
-          onPointerDown={(event) => {
-            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-              touchDraggedRef.current = false;
-            }
-          }}
           onPointerUp={(event) => {
             event.stopPropagation();
             if (event.pointerType === 'touch' || event.pointerType === 'pen') {
               ignoreNextClickRef.current = true;
               window.setTimeout(() => {
                 ignoreNextClickRef.current = false;
-              }, 400);
-              if (!canAcceptTap() || out) {
+              }, 500);
+              if (!touchGuardRef.current.canSelectFromTouch() || out) {
                 return;
               }
               chooseForQuantity(hit);
@@ -718,11 +711,11 @@ export function PosProductPicker({
           }}
           onClick={(event) => {
             event.stopPropagation();
-            if (ignoreNextClickRef.current) {
+            if (ignoreNextClickRef.current || isCoarsePointer()) {
               event.preventDefault();
               return;
             }
-            if (!canAcceptTap() || out) {
+            if (!touchGuardRef.current.canSelectFromMouse(false) || out) {
               return;
             }
             chooseForQuantity(hit);
@@ -734,19 +727,14 @@ export function PosProductPicker({
           type="button"
           className={`pos-picker__fav${hit.favorite ? ' pos-picker__fav--on' : ''}`}
           aria-label={hit.favorite ? 'Remove favorite' : 'Add favorite'}
-          onPointerDown={(event) => {
-            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
-              touchDraggedRef.current = false;
-            }
-          }}
           onPointerUp={(event) => {
             event.stopPropagation();
             if (event.pointerType === 'touch' || event.pointerType === 'pen') {
               ignoreNextClickRef.current = true;
               window.setTimeout(() => {
                 ignoreNextClickRef.current = false;
-              }, 400);
-              if (!canAcceptTap()) {
+              }, 500);
+              if (!touchGuardRef.current.canSelectFromTouch()) {
                 return;
               }
               void handleFavoriteToggle(hit);
@@ -754,11 +742,11 @@ export function PosProductPicker({
           }}
           onClick={(event) => {
             event.stopPropagation();
-            if (ignoreNextClickRef.current) {
+            if (ignoreNextClickRef.current || isCoarsePointer()) {
               event.preventDefault();
               return;
             }
-            if (!canAcceptTap()) {
+            if (!touchGuardRef.current.canSelectFromMouse(false)) {
               return;
             }
             void handleFavoriteToggle(hit);
@@ -916,8 +904,11 @@ export function PosProductPicker({
           itemHeight={ROW_HEIGHT}
           height={listHeight}
           scrollToIndex={keyboardScrollIndex}
+          onGestureStart={() => {
+            touchGuardRef.current.beginTouchGesture();
+          }}
           onScrollGesture={() => {
-            markScrollGesture();
+            touchGuardRef.current.markDrag();
             setKeyboardScrollIndex(null);
           }}
           renderItem={renderRow}

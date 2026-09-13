@@ -8,9 +8,10 @@ interface VirtualListProps<T> {
   className?: string;
   style?: CSSProperties;
   renderItem: (item: T, index: number, style: CSSProperties) => ReactNode;
-  /** Only scroll the list to this index when set (e.g. keyboard nav). Omit during touch scroll. */
   scrollToIndex?: number | null;
   onScrollIndexChange?: (index: number) => void;
+  /** New finger contact on the list. */
+  onGestureStart?: () => void;
   /** Fired as soon as a finger drag/scroll is detected (before click). */
   onScrollGesture?: () => void;
 }
@@ -27,14 +28,18 @@ export function VirtualList<T>({
   renderItem,
   scrollToIndex,
   onScrollIndexChange,
+  onGestureStart,
   onScrollGesture,
 }: VirtualListProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const prevLengthRef = useRef(items.length);
   const programmaticScrollRef = useRef(false);
+  const onGestureStartRef = useRef(onGestureStart);
   const onScrollGestureRef = useRef(onScrollGesture);
+  onGestureStartRef.current = onGestureStart;
   onScrollGestureRef.current = onScrollGesture;
+  const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
     if (items.length < prevLengthRef.current && containerRef.current) {
@@ -47,8 +52,6 @@ export function VirtualList<T>({
     prevLengthRef.current = items.length;
   }, [items.length, itemHeight, height]);
 
-  // Capture-phase touch tracking: when the list scrolls, buttons never get pointermove,
-  // so we must detect drag here and suppress the ghost click that follows.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) {
@@ -76,6 +79,7 @@ export function VirtualList<T>({
       dragging = false;
       startX = event.touches[0].clientX;
       startY = event.touches[0].clientY;
+      onGestureStartRef.current?.();
     };
 
     const onTouchMove = (event: TouchEvent) => {
@@ -133,6 +137,7 @@ export function VirtualList<T>({
       programmaticScrollRef.current = true;
       containerRef.current.scrollTop = Math.max(0, top - itemHeight);
       setScrollTop(containerRef.current.scrollTop);
+      lastScrollTopRef.current = containerRef.current.scrollTop;
       window.setTimeout(() => {
         programmaticScrollRef.current = false;
       }, 0);
@@ -141,9 +146,11 @@ export function VirtualList<T>({
 
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const nextTop = event.currentTarget.scrollTop;
+    const moved = Math.abs(nextTop - lastScrollTopRef.current) >= 1;
+    lastScrollTopRef.current = nextTop;
     setScrollTop(nextTop);
     onScrollIndexChange?.(Math.floor(nextTop / itemHeight));
-    if (!programmaticScrollRef.current) {
+    if (!programmaticScrollRef.current && moved) {
       onScrollGestureRef.current?.();
     }
   }
@@ -152,6 +159,7 @@ export function VirtualList<T>({
     <div
       ref={containerRef}
       className={className}
+      data-testid="pos-virtual-list"
       style={{
         ...style,
         height,
