@@ -27,8 +27,29 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                     OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(COALESCE(p.brand, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR EXISTS (
+                        SELECT 1 FROM ProductBarcode b
+                        WHERE b.productId = p.id
+                          AND LOWER(b.barcode) LIKE LOWER(CONCAT('%', :search, '%'))
+                      )
+                    OR EXISTS (
+                        SELECT 1 FROM ProductCategory c
+                        WHERE c.id = p.categoryId
+                          AND (
+                                LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                             OR LOWER(c.code) LIKE LOWER(CONCAT('%', :search, '%'))
+                          )
+                      )
                   )
-            ORDER BY p.name ASC
+            ORDER BY
+              CASE
+                WHEN :search IS NULL OR :search = '' THEN 2
+                WHEN LOWER(p.name) = LOWER(:search) OR LOWER(p.sku) = LOWER(:search) THEN 0
+                WHEN LOWER(p.name) LIKE LOWER(CONCAT(:search, '%'))
+                  OR LOWER(p.sku) LIKE LOWER(CONCAT(:search, '%')) THEN 1
+                ELSE 2
+              END ASC,
+              p.name ASC
             """)
     Page<Product> search(
             @Param("businessId") Long businessId,

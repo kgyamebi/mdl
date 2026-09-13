@@ -115,13 +115,12 @@ test('POS item search finds items by typing instead of scrolling', async ({ page
   await searchField.click();
   await searchField.fill('bajaj');
 
-  const options = page.locator('.product-search__option');
+  const options = page.locator('.pos-picker__card');
   await expect(options.first()).toBeVisible({ timeout: 15000 });
-  expect(await options.count()).toBeGreaterThan(1);
+  expect(await options.count()).toBeGreaterThan(0);
   await expect(options.first()).toContainText(/BAJAJ/i);
 
-  // Selecting fills the field and closes the list.
+  // One-tap add clears search and puts the line in the cart.
   await options.first().click();
-  await expect(options).toHaveCount(0);
-  await expect(searchField).toHaveValue(/BAJAJ/i);
+  await expect(page.locator('tbody td[data-label="Product"]').first()).toBeVisible({ timeout: 10000 });
 });

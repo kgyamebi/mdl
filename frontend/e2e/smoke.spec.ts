@@ -20,7 +20,7 @@ async function addInStockItemViaSearch(page: Page) {
     await searchField.click();
     await searchField.fill(term);
 
-    const inStock = page.locator('.product-search__option').filter({ hasText: /available/ }).first();
+    const inStock = page.locator('.pos-picker__card').filter({ hasText: /In Stock/i }).first();
     if (await inStock.isVisible({ timeout: 8000 }).catch(() => false)) {
       await inStock.click();
       return;
@@ -102,9 +102,6 @@ test('sales POS completes shop A sale', async ({ page }) => {
   await expect(page.getByText(/Stock checked at/i)).toBeVisible({ timeout: 10000 });
 
   await addInStockItemViaSearch(page);
-
-  await page.getByLabel(/Quantity to sell/i).fill('1');
-  await page.getByRole('button', { name: 'Add to sale' }).click();
 
   await expect(page.locator('tbody td[data-label="Product"]').first()).toBeVisible({ timeout: 10000 });
   await expect(page.getByRole('button', { name: 'Complete sale' })).toBeEnabled({ timeout: 10000 });

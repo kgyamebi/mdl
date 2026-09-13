@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { DetailCloseButton } from '../components/layout/DetailCloseButton';
-import { ProductSearchSelect } from '../components/products/ProductSearchSelect';
 import { SaleActionPanel } from '../components/sales/SaleActionPanel';
+import { PosProductPicker } from '../components/sales/PosProductPicker';
 import { fetchInventoryBalances } from '../services/inventoryService';
 import { fetchShops } from '../services/locationsService';
-import { lookupProductByBarcode } from '../services/productsService';
 import { createSale, fetchSale, fetchSales } from '../services/salesService';
 import type { PaymentMethod, Product, Sale, Shop } from '../types/api';
 import { printSaleReceipt } from '../utils/printReceipt';
@@ -107,15 +106,11 @@ export function SalesPage() {
   const [shopId, setShopId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
-  const [barcodeInput, setBarcodeInput] = useState('');
-  const [manualProduct, setManualProduct] = useState<Product | null>(null);
-  const [manualQuantity, setManualQuantity] = useState('1');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [paymentReference, setPaymentReference] = useState('');
   const [notes, setNotes] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [barcodeError, setBarcodeError] = useState<string | null>(null);
   // productId -> available quantity at the selected shop. A present key means the
   // balance has been checked, so a missing row can be reported as zero rather than
   // being confused with "not looked up yet".
@@ -149,24 +144,6 @@ export function SalesPage() {
       (sum, line) => (line.productId === productId ? sum + line.quantity : sum),
       0,
     );
-  }
-
-  function getRemainingStock(productId: number): number {
-    return Math.max(0, getAvailableStock(productId) - getCartQuantityForProduct(productId));
-  }
-
-  function formatStockHint(product: Product): string {
-    if (!shopId) {
-      return '';
-    }
-    if (!isStockChecked(product.id)) {
-      return '';
-    }
-    const remaining = getRemainingStock(product.id);
-    if (remaining <= 0) {
-      return 'Out of stock at this shop';
-    }
-    return `${formatQty(remaining)} ${formatUnitLabel(product.unitOfMeasure)} available`;
   }
 
   const cartTotal = useMemo(
@@ -254,37 +231,6 @@ export function SalesPage() {
     setStockAvailable(new Map());
   }, [shopStockLocationId]);
 
-  // Pull stock for a whole batch of search results in one request, so the cashier
-  // can see availability while scanning the suggestion list.
-  const loadStockForResults = useCallback(
-    (products: Product[], term: string) => {
-      const locationId = shopStockLocationId;
-      if (!locationId || products.length === 0) {
-        return;
-      }
-
-      fetchInventoryBalances({ locationId, search: term, size: 50 })
-        .then((response) => {
-          setStockAvailable((current) => {
-            const next = new Map(current);
-            // Anything the search returned but the balance query didn't has no
-            // row at this shop, which means none in stock.
-            products.forEach((product) => {
-              if (!next.has(product.id)) {
-                next.set(product.id, 0);
-              }
-            });
-            response.items.forEach((balance) => {
-              next.set(balance.productId, balance.quantityAvailable);
-            });
-            return next;
-          });
-        })
-        .catch(() => {});
-    },
-    [shopStockLocationId],
-  );
-
   const loadStockFor = useCallback(
     async (productId: number): Promise<number | null> => {
       const locationId = shopStockLocationId;
@@ -334,6 +280,8 @@ export function SalesPage() {
       }
     });
     return issues;
+    // getAvailableStock closes over stockAvailable, already listed below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartLines, shopId, stockAvailable]);
 
   const canSubmitSale =
@@ -344,15 +292,25 @@ export function SalesPage() {
     stockIssues.length === 0 &&
     !stockLoading;
 
-  async function addProductToCart(product: Product, qty: number) {
+  async function addProductToCart(
+    product: Product,
+    qty: number,
+    knownStock?: number | null,
+  ): Promise<boolean> {
     if (!shopId) {
       setCreateError('Select a shop before adding products.');
-      return;
+      return false;
     }
 
-    const available = isStockChecked(product.id)
-      ? getAvailableStock(product.id)
-      : ((await loadStockFor(product.id)) ?? 0);
+    let available: number;
+    if (knownStock != null && Number.isFinite(knownStock)) {
+      available = knownStock;
+      setStockAvailable((current) => new Map(current).set(product.id, available));
+    } else if (isStockChecked(product.id)) {
+      available = getAvailableStock(product.id);
+    } else {
+      available = (await loadStockFor(product.id)) ?? 0;
+    }
 
     const remaining = available - getCartQuantityForProduct(product.id);
     if (qty > remaining) {
@@ -362,7 +320,7 @@ export function SalesPage() {
           ? `Only ${formatQty(remaining)} ${unit} of ${product.sku} available at this shop.`
           : `${product.sku} is out of stock at this shop.`,
       );
-      return;
+      return false;
     }
 
     setCreateError(null);
@@ -387,36 +345,8 @@ export function SalesPage() {
         },
       ];
     });
-  }
-
-  async function handleBarcodeAdd() {
-    const trimmed = barcodeInput.trim();
-    if (!trimmed) {
-      return;
-    }
-    if (!shopId) {
-      setBarcodeError('Select a shop before scanning products.');
-      return;
-    }
-    setBarcodeError(null);
-    try {
-      const product = await lookupProductByBarcode(trimmed);
-      await addProductToCart(product, 1);
-      setBarcodeInput('');
-    } catch (err) {
-      setBarcodeError(err instanceof Error ? err.message : 'Product not found');
-    }
-  }
-
-  async function handleManualAddClick() {
-    const qty = Number(manualQuantity);
-    if (!manualProduct || !Number.isFinite(qty) || qty <= 0) {
-      setCreateError('Find an item and enter a quantity greater than zero.');
-      return;
-    }
-    await addProductToCart(manualProduct, qty);
-    setManualProduct(null);
-    setManualQuantity('1');
+    setStockAvailable((current) => new Map(current).set(product.id, available));
+    return true;
   }
 
   function updateCartLine(productId: number, patch: Partial<Pick<CartLine, 'quantity' | 'unitPrice'>>) {
@@ -474,9 +404,6 @@ export function SalesPage() {
       setShopId('');
       setCustomerName('');
       setCartLines([]);
-      setBarcodeInput('');
-      setManualProduct(null);
-      setManualQuantity('1');
       setPaymentMethod('CASH');
       setPaymentReference('');
       setNotes('');
@@ -524,7 +451,7 @@ export function SalesPage() {
         <section className="panel pos-panel">
           <h2>New sale</h2>
           <p className="hint pos-panel__hint">
-            Required: shop, at least one product, and payment method. Everything else is optional.
+            Fast sale: type → Enter adds ×1 · tap Quick picks · # for quantity · barcode Enter auto-adds.
           </p>
           <form className="form form--grid form--touch-friendly pos-form" onSubmit={handleCreate} noValidate>
             <div className="form__field">
@@ -569,58 +496,21 @@ export function SalesPage() {
             </div>
 
             <div className="form__field form__field--wide pos-form__add-product">
-              <span>Add product <em className="field-required">(required)</em></span>
-              <div className="pos-add-product">
-                <div className="pos-add-product__field">
-                  <label className="pos-add-product__label" htmlFor="pos-product-search">
-                    Item
-                  </label>
-                  <ProductSearchSelect
-                    inputId="pos-product-search"
-                    value={manualProduct}
-                    onChange={(product) => {
-                      setManualProduct(product);
-                      setCreateError(null);
-                      if (product && shopId && !isStockChecked(product.id)) {
-                        void loadStockFor(product.id);
-                      }
-                    }}
-                    placeholder="Type item name or code…"
-                    hintFor={(product) => formatStockHint(product)}
-                    onResults={loadStockForResults}
-                  />
-                  <span className="hint">
-                    {manualProduct
-                      ? formatStockHint(manualProduct) ||
-                        (stockLoading ? 'Checking stock…' : 'Select a shop to check stock')
-                      : 'Search 3,000+ items by name or code — no scrolling needed.'}
-                  </span>
-                </div>
-                <label className="pos-add-product__field pos-add-product__field--qty">
-                  <span className="pos-add-product__label">
-                    Quantity to sell
-                    {manualProduct ? ` (${formatUnitLabel(manualProduct.unitOfMeasure)})` : ''}
-                  </span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="any"
-                    className="input"
-                    value={manualQuantity}
-                    onChange={(e) => setManualQuantity(e.target.value)}
-                    placeholder="1"
-                  />
-                </label>
-                <div className="pos-add-product__action">
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--touch"
-                    onClick={() => void handleManualAddClick()}
-                  >
-                    Add to sale
-                  </button>
-                </div>
-              </div>
+              <span>Add products <em className="field-required">(required)</em></span>
+              <PosProductPicker
+                inputId="pos-product-search"
+                locationId={shopStockLocationId}
+                shopId={shopId ? Number(shopId) : undefined}
+                currencyCode={currencyCode}
+                disabled={!shopId}
+                autoFocus={showPosForm}
+                onAdd={(product, quantity, knownStock) =>
+                  addProductToCart(product, quantity, knownStock)
+                }
+              />
+              {!shopId && (
+                <span className="hint">Select a shop first so stock and selling location are correct.</span>
+              )}
             </div>
 
             {cartLines.length > 0 && (
@@ -699,28 +589,6 @@ export function SalesPage() {
                   <span>Notes</span>
                   <input type="text" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any extra notes" />
                 </label>
-                <div className="form__field form__field--wide">
-                  <span>Scan barcode</span>
-                  <div className="pos-barcode">
-                    <input
-                      type="text"
-                      className="input"
-                      placeholder="Optional — scan or type barcode…"
-                      value={barcodeInput}
-                      onChange={(e) => setBarcodeInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          void handleBarcodeAdd();
-                        }
-                      }}
-                    />
-                    <button type="button" className="btn btn--ghost btn--touch" onClick={() => void handleBarcodeAdd()}>
-                      Add
-                    </button>
-                  </div>
-                  {barcodeError && <p className="form__error">{barcodeError}</p>}
-                </div>
               </div>
             </details>
 
