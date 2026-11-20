@@ -1,0 +1,33 @@
+{
+  "name": "website",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "node scripts/generate-sitemap.mjs && node scripts/optimize-range-images.mjs && node scripts/fetch-brand-logos.mjs",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "sitemap": "node scripts/generate-sitemap.mjs",
+    "images": "node scripts/optimize-range-images.mjs",
+    "logos": "node scripts/fetch-brand-logos.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "^14.14.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.6",
+    "simple-icons": "^16.38.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "oxlint": "^1.90.0",
+    "sharp": "^0.35.5",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6"
+  }
+}

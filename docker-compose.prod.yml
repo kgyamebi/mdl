@@ -1,10 +1,11 @@
-# Production stack — MariaDB + backend + frontend + Caddy (HTTPS)
+# Production stack — MariaDB + backend + POS frontend + marketing website + Caddy (HTTPS)
 # Usage:
 #   cp .env.production.example .env
-#   # edit .env (domain, secrets, owner password)
+#   # edit .env (domains, secrets, owner password)
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# App: https://your-domain.example
+# Marketing: https://moderndreamlight.com
+# POS app:   https://app.moderndreamlight.com
 
 services:
   mariadb:
@@ -41,7 +42,7 @@ services:
       DB_USER: ${DB_USER:-mdl_user}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      CORS_ALLOWED_ORIGINS: https://${DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://${APP_DOMAIN:-${DOMAIN}},https://${MARKETING_DOMAIN:-moderndreamlight.com}
       CORS_ALLOW_LAN_ORIGINS: "false"
       OWNER_SEED_ENABLED: ${OWNER_SEED_ENABLED:-false}
       OWNER_EMAIL: ${OWNER_EMAIL:-owner@mdl.local}
@@ -67,17 +68,26 @@ services:
       backend:
         condition: service_healthy
 
+  website:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    container_name: mdl-website
+    restart: unless-stopped
+
   caddy:
     image: caddy:2.8-alpine
     container_name: mdl-caddy
     restart: unless-stopped
     depends_on:
       - frontend
+      - website
     ports:
       - "80:80"
       - "443:443"
     environment:
-      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+      APP_DOMAIN: ${APP_DOMAIN:-${DOMAIN:?Set APP_DOMAIN or DOMAIN in .env}}
+      MARKETING_DOMAIN: ${MARKETING_DOMAIN:-moderndreamlight.com}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:?Set LETSENCRYPT_EMAIL in .env}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro

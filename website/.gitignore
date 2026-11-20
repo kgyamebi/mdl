@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+*.local
+# Large local media cache (CDN fallback exists in the hero)
+public/media/*.mp4

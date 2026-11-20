@@ -2,8 +2,18 @@
 	email {$LETSENCRYPT_EMAIL}
 }
 
-{$DOMAIN} {
+# Public marketing site
+{$MARKETING_DOMAIN} {
 	encode gzip zstd
+	reverse_proxy website:80
+}
 
+www.{$MARKETING_DOMAIN} {
+	redir https://{$MARKETING_DOMAIN}{uri} permanent
+}
+
+# Existing POS / staff app
+{$APP_DOMAIN} {
+	encode gzip zstd
 	reverse_proxy frontend:80
 }
