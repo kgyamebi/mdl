@@ -14,7 +14,7 @@ export function BrandLogo({ brand, compact = false }: BrandLogoProps) {
       <div className="brand-card__mark" style={{ ['--brand-accent' as string]: brand.accent ?? '#d4a84b' }}>
         {!failed ? (
           <img
-            src={`/brands/${brand.slug}.svg`}
+            src={`/brand-marks/${brand.slug}.svg`}
             alt={`${brand.name} logo`}
             className="brand-card__logo"
             loading="lazy"

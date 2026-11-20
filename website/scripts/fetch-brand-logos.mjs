@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import * as icons from 'simple-icons';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outDir = join(__dirname, '..', 'public', 'brands');
+const outDir = join(__dirname, '..', 'public', 'brand-marks');
 mkdirSync(outDir, { recursive: true });
 
 /** Domains used to pull clearer brand marks where available. */
@@ -53,7 +53,7 @@ function wordmarkSvg(label, color) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="480" height="120" viewBox="0 0 480 120" role="img" aria-label="${safe}">
   <title>${safe}</title>
-  <text x="240" y="72" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="${size}" font-weight="800" letter-spacing="1.5" fill="${color}">${safe.toUpperCase()}</text>
+  <text x="240" y="72" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="${size}" font-weight="700" letter-spacing="${safe === 'modernDL' ? '-1' : '1.5'}" fill="${color}">${safe === 'modernDL' ? safe : safe.toUpperCase()}</text>
 </svg>`;
 }
 

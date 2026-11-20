@@ -45,7 +45,7 @@ export function Brands() {
             {brands.map((brand, index) => (
               <Reveal key={brand.slug} delay={Math.min(index * 0.02, 0.3)} className="brand-index__row-wrap">
                 <li className="brand-index__row">
-                  <img src={`/brands/${brand.slug}.svg`} alt="" />
+                  <img src={`/brand-marks/${brand.slug}.svg`} alt="" />
                   <span data-keep-case={brand.keepCase ? 'true' : undefined}>{brand.name}</span>
                 </li>
               </Reveal>

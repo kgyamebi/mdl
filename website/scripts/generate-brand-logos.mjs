@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import * as icons from 'simple-icons';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const outDir = join(__dirname, '..', 'public', 'brands');
+const outDir = join(__dirname, '..', 'public', 'brand-marks');
 mkdirSync(outDir, { recursive: true });
 
 const brands = [

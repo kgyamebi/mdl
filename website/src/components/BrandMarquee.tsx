@@ -7,7 +7,7 @@ type BrandMarqueeProps = {
 
 function logoSrc(slug: string) {
   // Official SVG logo marks / brand wordmarks — no boxes.
-  return `/brands/${slug}.svg`;
+  return `/brand-marks/${slug}.svg`;
 }
 
 export function BrandMarquee({ reverse = false, speed = 42 }: BrandMarqueeProps) {
