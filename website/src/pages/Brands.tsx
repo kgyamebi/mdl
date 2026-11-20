@@ -8,9 +8,9 @@ export function Brands() {
     <>
       <SeoHead
         title="brands we stock | moderndreamlight"
-        description="philips, havells, schneider, osram, hager, legrand and more — brands stocked at moderndreamlight. shops nationwide. opera square main branch."
-        path="/brands"
-        keywords={['philips ghana', 'havells ghana', 'schneider ghana', 'lighting brands accra']}
+        description="modernDL plus philips, havells, schneider, osram, hager, legrand and more — brands stocked at moderndreamlight. shops nationwide."
+        path={"/brands"}
+        keywords={['modernDL', 'philips ghana', 'havells ghana', 'schneider ghana', 'lighting brands accra']}
       />
       <section className="page-hero page-hero--slim">
         <div className="page-hero__media">
@@ -36,8 +36,8 @@ export function Brands() {
             <p className="kicker">full list</p>
             <h2>all brands we publicise</h2>
             <p className="brand-index__lede">
-              logos identify products we stock. availability is confirmed in-store at our shops nationwide,
-              including the opera square main branch (2 shops).
+              including house brand <span data-keep-case="true">modernDL</span>, plus international names.
+              availability is confirmed in-store at our shops nationwide.
             </p>
           </Reveal>
 
@@ -46,7 +46,7 @@ export function Brands() {
               <Reveal key={brand.slug} delay={Math.min(index * 0.02, 0.3)} className="brand-index__row-wrap">
                 <li className="brand-index__row">
                   <img src={`/brands/${brand.slug}.svg`} alt="" />
-                  <span>{brand.name}</span>
+                  <span data-keep-case={brand.keepCase ? 'true' : undefined}>{brand.name}</span>
                 </li>
               </Reveal>
             ))}

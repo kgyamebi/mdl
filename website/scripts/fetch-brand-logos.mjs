@@ -9,6 +9,7 @@ mkdirSync(outDir, { recursive: true });
 
 /** Domains used to pull clearer brand marks where available. */
 const brands = [
+  { slug: 'moderndl', label: 'modernDL', color: '#9A7428' },
   { slug: 'philips', label: 'Philips', icon: 'siPhilipshue', domain: 'philips.com', color: '#0A5C9C' },
   { slug: 'v-tac', label: 'V-TAC', domain: 'v-tac.eu', color: '#E31C23' },
   { slug: 'v-max', label: 'V-MAX', color: '#111111' },

@@ -16,7 +16,7 @@ export function Home() {
     <>
       <SeoHead
         title="moderndreamlight | lighting & electricals for ghana"
-        description="moderndreamlight — lighting, cables, switches, fans and electricals from 26+ trusted brands. shops nationwide. since 2000."
+        description="moderndreamlight — lighting, cables, switches, fans and electricals from 27+ trusted brands including modernDL. shops nationwide. since 2000."
         path="/"
         keywords={[
           'lighting shop ghana',
@@ -43,7 +43,7 @@ export function Home() {
           <div className="strip__stats">
             {[
               { n: `${site.years}+`, l: 'years of supply' },
-              { n: '26+', l: 'brands stocked' },
+              { n: '27+', l: 'brands stocked' },
               { n: '8', l: 'product ranges' },
               { n: 'nationwide', l: 'shops' },
             ].map((item, i) => (
@@ -56,7 +56,7 @@ export function Home() {
       <section className="brand-reel">
         <div className="container brand-reel__head">
           <Reveal>
-            <p className="kicker">26+ brands</p>
+            <p className="kicker">27+ brands</p>
             <h2>names your electrician already knows.</h2>
           </Reveal>
         </div>

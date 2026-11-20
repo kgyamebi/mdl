@@ -8,6 +8,7 @@ const outDir = join(__dirname, '..', 'public', 'brands');
 mkdirSync(outDir, { recursive: true });
 
 const brands = [
+  { slug: 'moderndl', label: 'modernDL', color: '#9A7428' },
   { slug: 'philips', label: 'Philips', icon: 'siPhilipshue', color: '#0A5C9C' },
   { slug: 'v-tac', label: 'V-TAC', color: '#E31C23' },
   { slug: 'v-max', label: 'V-MAX', color: '#1A1A1A' },

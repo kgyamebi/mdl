@@ -88,8 +88,8 @@ export function CinematicHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
         >
-          26+ brands. full ranges. competitive prices.
-          stock homeowners, electricians and contractors can trust.
+          27+ brands including <span data-keep-case="true">modernDL</span>. full ranges. competitive
+          prices. stock homeowners, electricians and contractors can trust.
         </motion.p>
         <motion.div
           className="hero__actions"

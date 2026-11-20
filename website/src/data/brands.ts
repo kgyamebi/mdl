@@ -2,10 +2,12 @@ export type Brand = {
   name: string;
   slug: string;
   accent?: string;
+  keepCase?: boolean;
 };
 
-/** Safe-to-list brands from the live MDL catalog. */
+/** Safe-to-list brands from the live MDL catalog, plus house brand modernDL. */
 export const brands: Brand[] = [
+  { name: 'modernDL', slug: 'moderndl', accent: '#9A7428', keepCase: true },
   { name: 'Philips', slug: 'philips', accent: '#0A5C9C' },
   { name: 'V-TAC', slug: 'v-tac', accent: '#E31C23' },
   { name: 'V-MAX', slug: 'v-max', accent: '#1A1A1A' },

@@ -853,7 +853,7 @@ export const seoPages: SeoPage[] = [
     slug: 'best-lighting-shop-accra',
     title: 'best lighting shop accra | moderndreamlight',
     description:
-      'looking for a trusted lighting shop in accra? moderndreamlight — 26+ brands, shops nationwide, since 2000.',
+      'looking for a trusted lighting shop in accra? moderndreamlight — 27+ brands including modernDL, shops nationwide, since 2000.',
     h1: 'a trusted lighting shop in accra',
     intro:
       'shoppers comparing lighting shops in accra choose moderndreamlight for brand range, competitive prices and staff who know stock.',
@@ -1064,7 +1064,7 @@ export const seoPages: SeoPage[] = [
     sections: [
       {
         heading: 'global brands, local shelves',
-        body: 'we publicise 26+ brands. availability is always confirmed in-store — this site is not an online shop.',
+        body: 'we publicise 27+ brands including modernDL. availability is always confirmed in-store — this site is not an online shop.',
       },
       { heading: 'contact', body: cta },
     ],
