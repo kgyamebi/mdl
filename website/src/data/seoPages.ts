@@ -10,7 +10,7 @@ export type SeoPage = {
   keywords: string[];
 };
 
-const cta = `visit our shops nationwide, or the opera square main branch in accra (2 shops). call or whatsapp ${site.phoneDisplay}. email ${site.email}.`;
+const cta = `visit our shops nationwide across ghana. call or whatsapp ${site.phoneDisplay}. email ${site.email}.`;
 
 /** Local + long-tail pages for organic discovery (publicity site, no online shop). */
 export const seoPages: SeoPage[] = [
@@ -729,6 +729,431 @@ export const seoPages: SeoPage[] = [
       { heading: 'contact', body: cta },
     ],
     keywords: ['quality lights ghana', 'best lights accra', 'trusted lighting shop ghana'],
+  },
+  {
+    slug: 'electrical-contractor-supplies-ghana',
+    title: 'electrical contractor supplies ghana | moderndreamlight',
+    description:
+      'electrical contractor supplies in ghana — cables, boards, breakers, lighting and accessories. shops nationwide. whatsapp for project lists.',
+    h1: 'electrical contractor supplies in ghana',
+    intro:
+      'contractors and project electricians shop moderndreamlight for job-site materials: wiring, protection, lighting and finishing accessories across ghana.',
+    sections: [
+      {
+        heading: 'built for trade lists',
+        body: 'bring your bill of quantities or whatsapp a photo of your list. we help match stock for residential, commercial and fit-out jobs.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['electrical contractor supplies ghana', 'trade electrical ghana', 'project electrical materials'],
+  },
+  {
+    slug: 'hotel-lighting-ghana',
+    title: 'hotel lighting ghana | moderndreamlight',
+    description:
+      'hotel and hospitality lighting in ghana from moderndreamlight. indoor, outdoor and corridor fittings. shops nationwide.',
+    h1: 'hotel lighting in ghana',
+    intro:
+      'fitting out a hotel, lodge or guest house in ghana? moderndreamlight stocks lighting ranges for rooms, lobbies, corridors and outdoor areas.',
+    sections: [
+      {
+        heading: 'hospitality projects',
+        body: 'ask for downlights, wall lights, outdoor fittings and related electricals. confirm models and quantities in-store or on whatsapp.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['hotel lighting ghana', 'hospitality lights accra', 'guest house lighting ghana'],
+  },
+  {
+    slug: 'church-lighting-ghana',
+    title: 'church lighting ghana | moderndreamlight',
+    description:
+      'church and auditorium lighting in ghana from moderndreamlight. shops nationwide. call or whatsapp for project advice.',
+    h1: 'church lighting in ghana',
+    intro:
+      'churches, chapels and auditoriums need reliable lighting. moderndreamlight supplies fittings and electricals for worship and event spaces across ghana.',
+    sections: [
+      {
+        heading: 'what to plan',
+        body: 'discuss hall size, ceiling height and outdoor lighting needs with staff. stock depends on the day — message ahead for large quantities.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['church lighting ghana', 'auditorium lights accra', 'worship hall lighting'],
+  },
+  {
+    slug: 'office-lighting-ghana',
+    title: 'office lighting ghana | moderndreamlight',
+    description:
+      'office and commercial lighting in ghana from moderndreamlight. shops nationwide. lighting, boards and wiring accessories.',
+    h1: 'office lighting in ghana',
+    intro:
+      'fitting an office, shop or workspace in ghana? moderndreamlight stocks commercial lighting and the electricals that complete the install.',
+    sections: [
+      {
+        heading: 'workspaces and fit-outs',
+        body: 'panel lights, downlights, switches, sockets and boards — check current stock before you buy for a full floor.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['office lighting ghana', 'commercial lights accra', 'workspace lighting ghana'],
+  },
+  {
+    slug: 'warehouse-lighting-ghana',
+    title: 'warehouse lighting ghana | moderndreamlight',
+    description:
+      'warehouse and industrial lighting in ghana from moderndreamlight. high-bay style and outdoor options when in stock. shops nationwide.',
+    h1: 'warehouse lighting in ghana',
+    intro:
+      'for warehouses, workshops and industrial sheds, moderndreamlight supplies outdoor and high-output lighting options alongside related electricals.',
+    sections: [
+      {
+        heading: 'site lighting',
+        body: 'tell us span, mounting height and power needs. we confirm what is available for trade pickup.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['warehouse lighting ghana', 'industrial lights accra', 'workshop lighting ghana'],
+  },
+  {
+    slug: 'buy-lights-accra-for-house-project',
+    title: 'buy lights in accra for a house project | moderndreamlight',
+    description:
+      'building or finishing a house in ghana? buy lights and electricals in accra at moderndreamlight. shops nationwide. since 2000.',
+    h1: 'buy lights in accra for a house project',
+    intro:
+      'many diaspora and local clients buy lighting and electricals in accra for house projects. moderndreamlight stocks ranges for rooms, outdoor areas and wiring.',
+    sections: [
+      {
+        heading: 'plan your list',
+        body: 'message whatsapp with room counts or a shopping list. we guide you to shops nationwide for pickup.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['buy lights accra house project', 'building materials lighting ghana', 'house lighting list accra'],
+  },
+  {
+    slug: 'send-electricals-to-ghana',
+    title: 'buy electricals in ghana for family projects | moderndreamlight',
+    description:
+      'living abroad and funding a ghana build? buy electricals and lighting locally at moderndreamlight — shops nationwide, whatsapp support.',
+    h1: 'buy electricals in ghana while abroad',
+    intro:
+      'if you are overseas and supporting a house or shop project in ghana, moderndreamlight helps your family or contractor buy lighting and electricals locally.',
+    sections: [
+      {
+        heading: 'how diaspora buyers work with us',
+        body: 'whatsapp the list, confirm stock, and arrange pickup by your builder or relative at a nationwide shop. pricing is confirmed in-store.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['buy electricals ghana from abroad', 'diaspora lighting ghana', 'send money for lights ghana'],
+  },
+  {
+    slug: 'best-lighting-shop-accra',
+    title: 'best lighting shop accra | moderndreamlight',
+    description:
+      'looking for a trusted lighting shop in accra? moderndreamlight — 26+ brands, shops nationwide, since 2000.',
+    h1: 'a trusted lighting shop in accra',
+    intro:
+      'shoppers comparing lighting shops in accra choose moderndreamlight for brand range, competitive prices and staff who know stock.',
+    sections: [
+      {
+        heading: 'why customers return',
+        body: 'real shelves, recognisable brands and nationwide shops — not an online catalogue with empty promises.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['best lighting shop accra', 'trusted lights shop ghana', 'top electrical shop accra'],
+  },
+  {
+    slug: 'wholesale-led-ghana',
+    title: 'wholesale led ghana | moderndreamlight',
+    description:
+      'wholesale and trade led lighting in ghana from moderndreamlight. shops nationwide. ask about bulk pickup.',
+    h1: 'wholesale led lighting in ghana',
+    intro:
+      'trade buyers looking for led lighting in ghana can check stock at moderndreamlight. shops nationwide for bulk and project pickup.',
+    sections: [
+      {
+        heading: 'trade quantities',
+        body: 'message your wattage and quantity. we confirm availability before you travel. pricing is in-store.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['wholesale led ghana', 'bulk led accra', 'trade led lighting ghana'],
+  },
+  {
+    slug: 'philips-led-ghana',
+    title: 'philips led ghana | stocked at moderndreamlight',
+    description:
+      'philips led lighting in ghana — check stock at moderndreamlight. shops nationwide. whatsapp to confirm models.',
+    h1: 'philips led in ghana',
+    intro:
+      'searching for philips led in ghana? moderndreamlight stocks philips lighting lines when available, alongside other trusted brands.',
+    sections: [
+      {
+        heading: 'confirm before you travel',
+        body: 'led models move quickly. call or whatsapp the exact bulb or fitting you need.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['philips led ghana', 'philips bulbs accra', 'philips lighting ghana'],
+  },
+  {
+    slug: 'schneider-breaker-ghana',
+    title: 'schneider breaker ghana | stocked at moderndreamlight',
+    description:
+      'schneider breakers and protection in ghana — check at moderndreamlight. shops nationwide for trade and projects.',
+    h1: 'schneider breakers in ghana',
+    intro:
+      'electricians searching for schneider breakers in ghana can check availability at moderndreamlight shops nationwide.',
+    sections: [
+      {
+        heading: 'protection for projects',
+        body: 'bring ratings and ways needed. staff help match schneider and alternative protection brands in stock.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['schneider breaker ghana', 'schneider mcb accra', 'schneider protection ghana'],
+  },
+  {
+    slug: 'abb-mcb-ghana',
+    title: 'abb mcb ghana | stocked at moderndreamlight',
+    description:
+      'abb mcbs and circuit protection in ghana from moderndreamlight when in stock. shops nationwide.',
+    h1: 'abb mcbs in ghana',
+    intro:
+      'looking for abb mcbs in ghana? moderndreamlight stocks abb and related protection brands when available.',
+    sections: [
+      {
+        heading: 'trade pickup',
+        body: 'whatsapp amp ratings and pole configuration. we confirm before you visit.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['abb mcb ghana', 'abb breaker accra', 'abb circuit protection ghana'],
+  },
+  {
+    slug: 'hager-mcb-ghana',
+    title: 'hager mcb ghana | stocked at moderndreamlight',
+    description:
+      'hager mcbs and boards in ghana — check stock at moderndreamlight. shops nationwide.',
+    h1: 'hager mcbs in ghana',
+    intro:
+      'for hager mcbs and related boards in ghana, ask moderndreamlight. availability changes with stock.',
+    sections: [
+      {
+        heading: 'match the board',
+        body: 'bring the board type or photo. we help select compatible protection when in stock.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['hager mcb ghana', 'hager board accra', 'hager electrical ghana'],
+  },
+  {
+    slug: 'legrand-switches-ghana',
+    title: 'legrand switches ghana | stocked at moderndreamlight',
+    description:
+      'legrand switches and sockets in ghana from moderndreamlight when available. shops nationwide.',
+    h1: 'legrand switches in ghana',
+    intro:
+      'finishing a house with legrand switches in ghana? moderndreamlight stocks legrand wiring accessories when available.',
+    sections: [
+      {
+        heading: 'finishing accessories',
+        body: 'ask for matching sockets and related plates. message photos if you need an exact finish.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['legrand switches ghana', 'legrand sockets accra', 'legrand wiring ghana'],
+  },
+  {
+    slug: 'osram-led-ghana',
+    title: 'osram led ghana | stocked at moderndreamlight',
+    description:
+      'osram led lamps in ghana — check at moderndreamlight. shops nationwide. whatsapp to confirm stock.',
+    h1: 'osram led in ghana',
+    intro:
+      'customers searching for osram led in ghana can check moderndreamlight for lamps and related lighting stock.',
+    sections: [
+      {
+        heading: 'popular lamps',
+        body: 'stock rotates. confirm the base type and wattage before you travel.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['osram led ghana', 'osram bulbs accra', 'osram lighting ghana'],
+  },
+  {
+    slug: 'havells-fans-ghana',
+    title: 'havells fans ghana | stocked at moderndreamlight',
+    description:
+      'havells fans and electricals in ghana from moderndreamlight when in stock. shops nationwide.',
+    h1: 'havells fans in ghana',
+    intro:
+      'looking for havells fans in ghana? moderndreamlight stocks havells and other fan brands when available.',
+    sections: [
+      {
+        heading: 'ceiling and wall options',
+        body: 'ask for size and finish. availability is confirmed in-store or on whatsapp.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['havells fans ghana', 'havells ceiling fan accra', 'havells electrical ghana'],
+  },
+  {
+    slug: 'building-electrical-materials-ghana',
+    title: 'building electrical materials ghana | moderndreamlight',
+    description:
+      'building electrical materials in ghana — cables, conduit, boards, switches and lighting. moderndreamlight shops nationwide.',
+    h1: 'building electrical materials in ghana',
+    intro:
+      'from foundation wiring to finishing lights, moderndreamlight supplies building electrical materials across ghana.',
+    sections: [
+      {
+        heading: 'for builders and owners',
+        body: 'pair lighting choices with cables, conduit and protection in one visit. shops nationwide.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['building electrical materials ghana', 'construction electricals accra', 'house wiring materials ghana'],
+  },
+  {
+    slug: 'shop-fitout-lighting-ghana',
+    title: 'shop fit-out lighting ghana | moderndreamlight',
+    description:
+      'shop and retail fit-out lighting in ghana from moderndreamlight. shops nationwide for trade pickup.',
+    h1: 'shop fit-out lighting in ghana',
+    intro:
+      'opening a retail shop or renovating a storefront in ghana? moderndreamlight stocks lighting and electricals for fit-outs.',
+    sections: [
+      {
+        heading: 'retail spaces',
+        body: 'track lights, downlights, outdoor signage lighting and wiring accessories — confirm stock for your timeline.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['shop fit out lighting ghana', 'retail lights accra', 'store lighting ghana'],
+  },
+  {
+    slug: 'apartment-lighting-ghana',
+    title: 'apartment lighting ghana | moderndreamlight',
+    description:
+      'apartment and flat lighting in ghana from moderndreamlight. indoor fittings, fans and wiring accessories. shops nationwide.',
+    h1: 'apartment lighting in ghana',
+    intro:
+      'furnishing apartments or multi-unit housing in ghana? moderndreamlight supplies lighting, fans and electrical finishing for units.',
+    sections: [
+      {
+        heading: 'multi-unit projects',
+        body: 'message quantities per unit. we help standardise fittings where stock allows.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['apartment lighting ghana', 'flat lights accra', 'residential unit lighting ghana'],
+  },
+  {
+    slug: 'export-quality-electricals-ghana',
+    title: 'export-quality electrical brands in ghana | moderndreamlight',
+    description:
+      'international electrical brands stocked in ghana at moderndreamlight — philips, schneider, abb, hager, legrand and more.',
+    h1: 'international electrical brands in ghana',
+    intro:
+      'buyers worldwide searching for trusted electrical brands in ghana find moderndreamlight stocking recognisable names for local projects.',
+    sections: [
+      {
+        heading: 'global brands, local shelves',
+        body: 'we publicise 26+ brands. availability is always confirmed in-store — this site is not an online shop.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['international electrical brands ghana', 'imported lights ghana', 'global brands electrical accra'],
+  },
+  {
+    slug: 'ghana-lighting-for-diaspora-builds',
+    title: 'ghana lighting for diaspora builds | moderndreamlight',
+    description:
+      'diaspora building in ghana? source lighting and electricals locally at moderndreamlight. shops nationwide. whatsapp support.',
+    h1: 'lighting for diaspora builds in ghana',
+    intro:
+      'ghanaians abroad often fund homes and shops back home. moderndreamlight is a local source for lighting and electricals your contractor can collect.',
+    sections: [
+      {
+        heading: 'coordinate from anywhere',
+        body: `whatsapp ${site.phoneDisplay} with your list. we advise on stock and shop pickup nationwide.`,
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['diaspora build ghana lighting', 'ghana house project lights', 'abroad buy electricals ghana'],
+  },
+  {
+    slug: 'project-electrical-wholesaler-ghana',
+    title: 'project electrical wholesaler ghana | moderndreamlight',
+    description:
+      'project electrical wholesaling in ghana — lighting and electricals for contractors. moderndreamlight shops nationwide.',
+    h1: 'project electrical wholesale in ghana',
+    intro:
+      'large lists and phased projects need a reliable electrical house. moderndreamlight serves contractors with lighting and electrical supplies nationwide.',
+    sections: [
+      {
+        heading: 'phased deliveries',
+        body: 'start with wiring and boards, finish with lights and accessories. ask staff how to stage pickups.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['project electrical wholesaler ghana', 'electrical wholesale accra', 'contractor wholesale lighting'],
+  },
+  {
+    slug: 'security-lights-ghana',
+    title: 'security lights ghana | moderndreamlight',
+    description:
+      'security and outdoor lights in ghana from moderndreamlight. floodlights and exterior fittings. shops nationwide.',
+    h1: 'security lights in ghana',
+    intro:
+      'protect compounds, shops and homes with outdoor and security lighting from moderndreamlight when in stock.',
+    sections: [
+      {
+        heading: 'outdoor safety',
+        body: 'ask for floodlights and wall-mounted outdoor options. confirm wattage for your perimeter.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['security lights ghana', 'compound lights accra', 'outdoor security lighting ghana'],
+  },
+  {
+    slug: 'generator-changeover-ghana',
+    title: 'generator changeover ghana | moderndreamlight',
+    description:
+      'generator changeover switches in ghana from moderndreamlight. circuit protection and boards too. shops nationwide.',
+    h1: 'generator changeover switches in ghana',
+    intro:
+      'power backup setups in ghana need the right changeover. moderndreamlight stocks changeovers and related protection for homes and sites.',
+    sections: [
+      {
+        heading: 'backup power setups',
+        body: 'tell us generator size and load. we help match changeover options available that day.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['generator changeover ghana', 'changeover switch accra', 'generator switch ghana'],
+  },
+  {
+    slug: 'smart-home-lighting-ghana',
+    title: 'modern home lighting ghana | moderndreamlight',
+    description:
+      'modern home lighting in ghana — leds, decorative fittings and wiring accessories at moderndreamlight. shops nationwide.',
+    h1: 'modern home lighting in ghana',
+    intro:
+      'updating a ghana home with modern lighting? moderndreamlight stocks contemporary fittings, leds and the electricals behind a clean finish.',
+    sections: [
+      {
+        heading: 'style plus substance',
+        body: 'pair decorative lights with quality switches, boards and cables. visit shops nationwide to see finishes in person.',
+      },
+      { heading: 'contact', body: cta },
+    ],
+    keywords: ['modern home lighting ghana', 'contemporary lights accra', 'home makeover lighting ghana'],
   },
 ];
 

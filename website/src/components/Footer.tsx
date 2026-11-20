@@ -2,7 +2,24 @@ import { Link } from 'react-router-dom';
 import { site } from '../data/site';
 import { seoPages } from '../data/seoPages';
 
-const featuredSeo = seoPages.slice(0, 12);
+const featuredSeo = [
+  ...seoPages.filter((p) =>
+    [
+      'electrical-contractor-supplies-ghana',
+      'buy-lights-accra-for-house-project',
+      'send-electricals-to-ghana',
+      'ghana-lighting-for-diaspora-builds',
+      'wholesale-led-ghana',
+      'best-lighting-shop-accra',
+      'hotel-lighting-ghana',
+      'philips-led-ghana',
+      'schneider-breaker-ghana',
+      'building-electrical-materials-ghana',
+      'security-lights-ghana',
+      'lighting-shop-accra',
+    ].includes(p.slug),
+  ),
+];
 
 export function Footer() {
   return (
