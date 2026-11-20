@@ -8,10 +8,6 @@
 	reverse_proxy website:80
 }
 
-www.{$MARKETING_DOMAIN} {
-	redir https://{$MARKETING_DOMAIN}{uri} permanent
-}
-
 # Existing POS / staff app
 {$APP_DOMAIN} {
 	encode gzip zstd
