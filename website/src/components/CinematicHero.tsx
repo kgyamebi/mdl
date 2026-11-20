@@ -88,8 +88,8 @@ export function CinematicHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
         >
-          the house that outfits ghana's rooms and job sites — 26+ brands, full ranges, competitive prices.
-          built for homeowners, electricians and contractors who need stock they can trust.
+          26+ brands. full ranges. competitive prices.
+          stock homeowners, electricians and contractors can trust.
         </motion.p>
         <motion.div
           className="hero__actions"

@@ -34,11 +34,11 @@ export function Home() {
             <p className="kicker">built for real work</p>
           </Reveal>
           <Reveal delay={0.08}>
-            <p className="strip__copy">
-              from a single fitting to a full project list — lighting that holds the room, wiring that holds
-              the load, and brands contractors already specify. {site.name} stocks what homes, sites and big
-              builds actually need, with shops nationwide when you are ready to see it in person.
-            </p>
+            <div className="strip__copy">
+              <p>from a single fitting to a full project list.</p>
+              <p>lighting that holds the room. wiring that holds the load.</p>
+              <p>brands contractors already specify — ready in shops nationwide.</p>
+            </div>
           </Reveal>
           <div className="strip__stats">
             {[

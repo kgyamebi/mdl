@@ -31,10 +31,12 @@ body {
   font-weight: 400;
   color: var(--ink);
   background: var(--bg);
-  line-height: 1.55;
+  line-height: 1.62;
+  letter-spacing: 0.01em;
   text-transform: lowercase;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* keep modernDL brand casing intact */

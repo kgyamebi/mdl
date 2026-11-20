@@ -30,10 +30,9 @@ export function About() {
             <p className="kicker">our story</p>
             <h2>{site.name}</h2>
             <p className="about-copy">
-              established in {site.founded}, {site.name} is a ghanaian company with shops nationwide. our
-              main branch is at opera square in accra — and that branch alone has 2 shops. for more than two
-              decades we have supplied quality lighting and electrical products to homeowners, electricians,
-              contractors, and project buyers.
+              established in {site.founded}, {site.name} is a ghanaian company with shops nationwide. for more
+              than two decades we have supplied quality lighting and electrical products to homeowners,
+              electricians, contractors, and project buyers.
             </p>
             <p className="about-copy">
               from lights and lamps to cables, switches, fans, circuit protection, and distribution boards —
@@ -53,10 +52,8 @@ export function About() {
                   <span>{site.coverage}</span>
                 </li>
                 <li>
-                  <strong>main branch</strong>
-                  <span>
-                    {site.address.landmark} — {site.address.shopsAtMain}
-                  </span>
+                  <strong>presence</strong>
+                  <span>{site.coverage}</span>
                 </li>
                 <li>
                   <strong>hours</strong>
@@ -81,7 +78,7 @@ export function About() {
             },
             {
               title: 'competitive prices',
-              text: 'visit any of our shops nationwide, or the opera square main branch (2 shops there), for fair pricing — not an online shop.',
+              text: 'visit our shops nationwide for fair pricing — this site is publicity only, not an online shop.',
             },
             {
               title: 'people who know stock',
